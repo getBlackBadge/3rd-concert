@@ -1,0 +1,277 @@
+openapi: 3.0.3
+info:
+  title: Concert Reservation Service
+  description: API specification for a concert reservation system with queue management and seat reservations.
+  version: 1.0.0
+
+paths:
+  /auth/token:
+    post:
+      summary: Issue user token for a specific concert
+      description: Issue a JWT token containing user's UUID, concert ID, and queue information (such as queue position or wait time) to manage their queue.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                concertId:
+                  type: string
+                  example: "987e6543-d21b-43a2-b567-123456789abc"
+      responses:
+        200:
+          description: Token issued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT token containing user's UUID, concert ID, and queue information.
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  queueInfo:
+                    type: object
+                    properties:
+                      concertId:
+                        type: string
+                        example: "concert-987e6543-d21b-43a2-b567-123456789abc"
+                      position:
+                        type: integer
+                        example: 5
+                      waitTime:
+                        type: string
+                        example: "10 minutes"
+        400:
+          description: Invalid user ID or concert ID
+
+  /seats/available-dates:
+    get:
+      summary: Get available reservation dates for a concert
+      description: Retrieves a list of dates available for seat reservations for a specific concert.
+      tags:
+        - Seats
+      parameters:
+        - in: query
+          name: concertId
+          schema:
+            type: string
+          required: true
+          description: The concert ID for which to retrieve available dates.
+      responses:
+        200:
+          description: List of available dates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: date
+                  example: "2024-10-10"
+        400:
+          description: Invalid concert ID
+
+  /seats/available-seats:
+    get:
+      summary: Get available seats for a given date
+      description: Retrieves available seat information for a specific date.
+      tags:
+        - Seats
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+          required: true
+          description: The date to check for available seats.
+      responses:
+        200:
+          description: List of available seats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  example: 25
+        400:
+          description: Invalid date format
+
+  /reservation:
+    post:
+      summary: Request seat reservation
+      description: Request to reserve a seat, which will be temporarily held for the user for a limited time (e.g., 5 minutes).
+      tags:
+        - Reservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                  example: "2024-10-10"
+                seatNumber:
+                  type: integer
+                  example: 15
+      responses:
+        200:
+          description: Seat reserved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservationId:
+                    type: string
+                    example: "res-123e4567-e89b-12d3-a456-426614174000"
+                  expiresIn:
+                    type: string
+                    example: "5 minutes"
+        409:
+          description: Seat is already reserved by another user
+
+  /balance/charge:
+    post:
+      summary: Charge balance
+      description: Charge the user's balance with a specific amount.
+      tags:
+        - Balance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                amount:
+                  type: number
+                  format: float
+                  example: 100.0
+      responses:
+        200:
+          description: Balance charged successfully
+        400:
+          description: Invalid request
+
+  /balance:
+    get:
+      summary: Get user balance
+      description: Retrieve the balance of a specific user.
+      tags:
+        - Balance
+      parameters:
+        - in: query
+          name: userId
+          schema:
+            type: string
+          required: true
+          description: The user's unique identifier.
+      responses:
+        200:
+          description: User balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: number
+                    format: float
+                    example: 250.0
+        404:
+          description: User not found
+
+  /payment:
+    post:
+      summary: Complete seat reservation payment
+      description: Process payment for a reserved seat, assigning ownership of the seat to the user.
+      tags:
+        - Payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reservationId:
+                  type: string
+                  example: "res-123e4567-e89b-12d3-a456-426614174000"
+                userId:
+                  type: string
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        200:
+          description: Payment completed and seat ownership assigned
+        400:
+          description: Invalid reservation or user ID
+        410:
+          description: Reservation expired
+          
+components:
+  schemas:
+    Concert:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        date:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        totalSeats:
+          type: integer
+
+    SeatReservationRequest:
+      type: object
+      properties:
+        concertId:
+          type: string
+        date:
+          type: string
+          format: date
+        seatNumber:
+          type: integer
+
+    SeatReservation:
+      type: object
+      properties:
+        reservationId:
+          type: string
+        expiresIn:
+          type: string
+
+    UserBalance:
+      type: object
+      properties:
+        userId:
+          type: string
+        balance:
+          type: number
+          format: float
+
+    PaymentRequest:
+      type: object
+      properties:
+        reservationId:
+          type: string
+        userId:
+          type: string
