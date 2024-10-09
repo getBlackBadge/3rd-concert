@@ -1,0 +1,56 @@
+services:
+  app:
+    image: "node:18-alpine"
+    container_name: nestjs-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: "node"
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=course_service_db
+    volumes:
+      - .:/app
+    ports:
+      - "3000:3000"
+    tty: true
+    command: sh -c "npm run migrate:up && npx nodemon"
+    depends_on:
+      - redis 
+      - postgres
+    networks:
+      - app-network 
+  
+  redis:
+    image: redis:7.2.3-alpine3.18
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-server
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: course_service_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
