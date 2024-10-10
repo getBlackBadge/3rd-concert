@@ -20,7 +20,7 @@
 sequenceDiagram
     participant User
     participant Nginx
-    participant MockServer(prism)
+    participant MockServer as MockServer(prism)
     participant NestJs
 
     User ->> Nginx: 요청 전송 (/mock 또는 다른 경로)
