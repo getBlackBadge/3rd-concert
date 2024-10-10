@@ -9,6 +9,24 @@
 3. 요구사항 분석 자료
     시퀀스 다이어그램
     1. mock-server
+    nginx에서 /mock로 시작하는 요청은 MockServer로 전송한다
+    ```mermaid
+    sequenceDiagram
+    participant User
+    participant Nginx
+    participant MockServer(prism)
+    participant NestJs
+
+    User ->> Nginx: 요청 전송 (/mock 또는 다른 경로)
+    alt URL이 /mock으로 시작
+        Nginx ->> MockServer: 요청 전달 (/mock/*)
+        MockServer -->> Nginx: 응답
+    else 이외 나머지 경로
+        Nginx ->> NestJs: 요청 전달 (기타 경로)
+        NestJs -->> Nginx: 응답
+    end
+    Nginx -->> User: 응답 전송
+    ```
     2. 대기열
     3. 좌석 예약
     4. 결제
