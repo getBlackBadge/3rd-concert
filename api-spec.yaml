@@ -1,16 +1,55 @@
 openapi: 3.0.3
 info:
-  title: Concert Reservation Service
-  description: API specification for a concert reservation system with queue management and seat reservations.
+  title: 콘서트 예약 서비스
+  description: 대기열 관리 및 좌석 예약 시스템에 대한 API 명세서입니다.
   version: 1.0.0
 
 paths:
-  /auth/token:
-    post:
-      summary: Issue user token for a specific concert
-      description: Issue a JWT token containing user's UUID, concert ID, and queue information (such as queue position or wait time) to manage their queue.
+  /health:
+    get:
+      summary: 서비스 상태 확인
+      description: 서비스의 상태를 확인합니다.
       tags:
-        - Auth
+        - 시스템
+      responses:
+        200:
+          description: 서비스가 정상적으로 동작 중입니다.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "OK"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-04-15T10:30:00Z"
+        500:
+          description: 서비스가 비정상적입니다.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ERROR"
+                  message:
+                    type: string
+                    example: "데이터베이스 연결 실패"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-04-15T10:30:00Z"
+
+  /auth/login:
+    post:
+      summary: 사용자 로그인
+      description: 사용자를 인증하고 JWT 토큰을 발급합니다.
+      tags:
+        - 인증
       requestBody:
         required: true
         content:
@@ -21,12 +60,17 @@ paths:
                 userId:
                   type: string
                   example: "123e4567-e89b-12d3-a456-426614174000"
-                concertId:
+                password:
                   type: string
-                  example: "987e6543-d21b-43a2-b567-123456789abc"
+                  example: "securePassword123"
       responses:
         200:
-          description: Token issued successfully
+          description: 로그인 성공
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "Authorization=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Strict; Path=/"
           content:
             application/json:
               schema:
@@ -34,83 +78,19 @@ paths:
                 properties:
                   token:
                     type: string
-                    description: JWT token containing user's UUID, concert ID, and queue information.
+                    description: 인증용 JWT 토큰
                     example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  queueInfo:
-                    type: object
-                    properties:
-                      concertId:
-                        type: string
-                        example: "concert-987e6543-d21b-43a2-b567-123456789abc"
-                      position:
-                        type: integer
-                        example: 5
-                      waitTime:
-                        type: string
-                        example: "10 minutes"
-        400:
-          description: Invalid user ID or concert ID
+        401:
+          description: 유효하지 않은 자격 증명
 
-  /seats/available-dates:
-    get:
-      summary: Get available reservation dates for a concert
-      description: Retrieves a list of dates available for seat reservations for a specific concert.
-      tags:
-        - Seats
-      parameters:
-        - in: query
-          name: concertId
-          schema:
-            type: string
-          required: true
-          description: The concert ID for which to retrieve available dates.
-      responses:
-        200:
-          description: List of available dates
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-                  format: date
-                  example: "2024-10-10"
-        400:
-          description: Invalid concert ID
-
-  /seats/available-seats:
-    get:
-      summary: Get available seats for a given date
-      description: Retrieves available seat information for a specific date.
-      tags:
-        - Seats
-      parameters:
-        - in: query
-          name: date
-          schema:
-            type: string
-            format: date
-          required: true
-          description: The date to check for available seats.
-      responses:
-        200:
-          description: List of available seats
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: integer
-                  example: 25
-        400:
-          description: Invalid date format
-
-  /reservation:
+  /queue/token:
     post:
-      summary: Request seat reservation
-      description: Request to reserve a seat, which will be temporarily held for the user for a limited time (e.g., 5 minutes).
+      summary: 특정 콘서트 대기열을 위한 토큰 발급
+      description: 콘서트 대기열에 사용자를 추가하고 대기열 정보를 반환합니다.
       tags:
-        - Reservation
+        - 대기열
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -118,16 +98,153 @@ paths:
             schema:
               type: object
               properties:
-                date:
+                concertId:
                   type: string
-                  format: date
-                  example: "2024-10-10"
-                seatNumber:
-                  type: integer
-                  example: 15
+                  example: "987e6543-d21b-43a2-b567-123456789abc"
       responses:
         200:
-          description: Seat reserved successfully
+          description: 대기열에 성공적으로 참여함
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "QueueToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Strict; Path=/"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: 사용자의 UUID, 콘서트 ID 및 대기열 정보를 포함한 JWT 토큰
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  queueInfo:
+                    type: object
+                    properties:
+                      concertId:
+                        type: string
+                        example: "987e6543-d21b-43a2-b567-123456789abc"
+                      position:
+                        type: integer
+                        example: 5
+                      waitTime:
+                        type: string
+                        example: "10분"
+        400:
+          description: 잘못된 콘서트 ID
+        401:
+          description: 권한 없음
+
+  /concerts:
+    get:
+      summary: 예약 가능한 콘서트 목록 조회
+      description: 각 콘서트의 이용 가능한 좌석 수를 포함한 콘서트 목록을 조회합니다.
+      tags:
+        - 콘서트
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 페이지 번호
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: 페이지당 항목 수
+      responses:
+        200:
+          description: 예약 가능한 날짜를 포함한 콘서트 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Concert'
+                  pagination:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+                      totalItems:
+                        type: integer
+        400:
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /concerts/{id}/seats:
+    get:
+      summary: 특정 콘서트 좌석 정보 조회
+      description: 특정 날짜에 대한 콘서트 좌석 정보를 조회합니다.
+      tags:
+        - 콘서트
+        - 좌석
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: 콘서트 ID
+      responses:
+        200:
+          description: 좌석 상태 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    seatNumber:
+                      type: integer
+                      example: 25
+                    status:
+                      type: string
+                      enum: [available, reserved, sold]
+                      example: available
+        400:
+          description: 잘못된 콘서트 ID
+        404:
+          description: 콘서트를 찾을 수 없음
+
+  /reservation:
+    post:
+      summary: 좌석 예약 요청
+      description: consert의 특정 좌석 예약을 요청하며, 해당 좌석은 제한된 시간(5분) 동안 사용자에게 임시로 홀딩됩니다.
+      tags:
+        - 예약
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                concertId:
+                  type: string
+                  description: 콘서트 ID
+                seatId:
+                  type: string
+                  description: 예약할 좌석 ID
+      responses:
+        200:
+          description: 좌석이 성공적으로 예약됨
           content:
             application/json:
               schema:
@@ -135,19 +252,27 @@ paths:
                 properties:
                   reservationId:
                     type: string
-                    example: "res-123e4567-e89b-12d3-a456-426614174000"
+                    example: "123e4567-e89b-12d3-a456-426614174000"
                   expiresIn:
                     type: string
-                    example: "5 minutes"
+                    example: "5분"
+        400:
+          description: 잘못된 콘서트 ID 또는 좌석 ID
+        401:
+          description: 권한 없음
+        404:
+          description: 콘서트 또는 좌석을 찾을 수 없음
         409:
-          description: Seat is already reserved by another user
+          description: 다른 사용자가 이미 예약한 좌석
 
   /balance/charge:
     post:
-      summary: Charge balance
-      description: Charge the user's balance with a specific amount.
+      summary: 잔액 충전
+      description: 특정 금액으로 사용자의 잔액을 충전합니다.
       tags:
-        - Balance
+        - 잔액
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -155,35 +280,29 @@ paths:
             schema:
               type: object
               properties:
-                userId:
-                  type: string
-                  example: "123e4567-e89b-12d3-a456-426614174000"
                 amount:
                   type: number
                   format: float
                   example: 100.0
       responses:
         200:
-          description: Balance charged successfully
+          description: 잔액이 성공적으로 충전됨
+        401:
+          description: 권한 없음
         400:
-          description: Invalid request
+          description: 잘못된 요청
 
   /balance:
     get:
-      summary: Get user balance
-      description: Retrieve the balance of a specific user.
+      summary: 사용자 잔액 조회
+      description: 특정 사용자의 잔액을 조회합니다.
       tags:
-        - Balance
-      parameters:
-        - in: query
-          name: userId
-          schema:
-            type: string
-          required: true
-          description: The user's unique identifier.
+        - 잔액
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: User balance retrieved successfully
+          description: 사용자의 잔액이 성공적으로 조회됨
           content:
             application/json:
               schema:
@@ -193,15 +312,19 @@ paths:
                     type: number
                     format: float
                     example: 250.0
+        401:
+          description: 권한 없음
         404:
-          description: User not found
+          description: 사용자를 찾을 수 없음
 
   /payment:
     post:
-      summary: Complete seat reservation payment
-      description: Process payment for a reserved seat, assigning ownership of the seat to the user.
+      summary: 좌석 예약 결제 완료
+      description: 예약된 좌석에 대한 결제를 처리하고, 좌석 소유권을 사용자에게 할당합니다.
       tags:
-        - Payment
+        - 결제
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -211,19 +334,24 @@ paths:
               properties:
                 reservationId:
                   type: string
-                  example: "res-123e4567-e89b-12d3-a456-426614174000"
-                userId:
-                  type: string
                   example: "123e4567-e89b-12d3-a456-426614174000"
       responses:
         200:
           description: Payment completed and seat ownership assigned
         400:
           description: Invalid reservation or user ID
+        401:
+          description: Unauthorized
         410:
           description: Reservation expired
           
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT          
+
   schemas:
     Concert:
       type: object
@@ -274,4 +402,13 @@ components:
         reservationId:
           type: string
         userId:
+          type: string
+    
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
           type: string

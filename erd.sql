@@ -58,8 +58,7 @@ CREATE TABLE Payments (
     user_id UUID REFERENCES Users(id),
     amount DECIMAL(10, 2) NOT NULL,
     payment_status VARCHAR(20) DEFAULT 'pending', -- pending, success, failed
-    payment_method VARCHAR(50) NOT NULL, -- 예: 'credit_card', 'paypal'
-    transaction_id VARCHAR(255),
+    payment_method VARCHAR(50) NOT NULL, -- 예: 'credit_card', '**페이'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
