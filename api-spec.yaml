@@ -265,33 +265,6 @@ paths:
         409:
           description: 다른 사용자가 이미 예약한 좌석
 
-  /balance/charge:
-    post:
-      summary: 잔액 충전
-      description: 특정 금액으로 사용자의 잔액을 충전합니다.
-      tags:
-        - 잔액
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                amount:
-                  type: number
-                  format: float
-                  example: 100.0
-      responses:
-        200:
-          description: 잔액이 성공적으로 충전됨
-        401:
-          description: 권한 없음
-        400:
-          description: 잘못된 요청
-
   /balance:
     get:
       summary: 사용자 잔액 조회
@@ -317,6 +290,31 @@ paths:
         404:
           description: 사용자를 찾을 수 없음
 
+    post:
+      summary: 잔액 충전
+      description: 특정 금액으로 사용자의 잔액을 충전합니다.
+      tags:
+        - 잔액
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  format: float
+                  example: 100.0
+      responses:
+        200:
+          description: 잔액이 성공적으로 충전됨
+        401:
+          description: 권한 없음
+        400:
+          description: 잘못된 요청
   /payment:
     post:
       summary: 좌석 예약 결제 완료
