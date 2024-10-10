@@ -17,7 +17,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "3000:3000"
+      - "3001:3000"
     tty: true
     command: sh -c "npm run migrate:up && npx nodemon"
     depends_on:
@@ -48,6 +48,28 @@ services:
       - "5432:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-server
+    ports:
+      - "3000:80"  # Nginx의 80 포트를 호스트의 4000 포트에 매핑
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf  # Nginx 설정 파일
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+  mock-server:  # 목서버 추가
+    image: node:18-alpine
+    container_name: mock-server
+    volumes:
+      - .:/app  # 현재 디렉토리를 컨테이너의 /app으로 마운트 TODO: 필요한 것만 마운트
+    working_dir: /app
+    command: sh start-mock-server.sh  # 스크립트를 실행하여 npm prism 시작
     networks:
       - app-network
 
