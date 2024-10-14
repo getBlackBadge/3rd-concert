@@ -1,114 +1,205 @@
-# 1. ERD 설계 자료
+## 1. 시나리오 선정 
+ - 콘서트 예약 서비스
+ - 이유: 대기열 생성, 좌석 예약, 결제 등 다양한 기능이 학습하기에 매우 좋아보였다.
 
-## 개요
-이 ERD는 사용자, 콘서트, 좌석 예약 및 결제 시스템을 설계합니다. 각 테이블은 사용자의 콘서트 예약 및 결제 과정을 명확하게 정의하며, 좌석 상태 관리 및 대기열 처리 기능도 포함하고 있습니다. 데이터 무결성을 위해 다양한 제약 조건을 설정하여 중복을 방지하고 시스템의 효율성을 높였습니다.
+## 2. 프로젝트 마일스톤
+    마일스톤 깃허브로 만들었기에 깃허브 링크로 제출합니다.
+    https://github.com/users/getBlackBadge/projects/1
 
-콘서트 예약 가능 여부를 따지기 위해서는 `Concerts`, `Seats`, `Reservations` 이 세 테이블을 모두 확인해야하는 성능상의 문제가 존재했었습니다.
-이를 개선하기 위해서 `Concerts`테이블과 `Seats`의 status 필드를 활용해 예약 가능여부를 확인하는 것으로 변경하고
-`Reservations` 테이블은 결제에 필요한 정보, 만료 처리에 필요한 정보를 담는 것으로 분리했습니다.
+## 3. 요구사항 분석 자료
+### 요약
+- 대기열은 queue테이블에 저장한다
+- 예약을 하면 reservation테이블에 만료시간과 좌석 등 결제시 필요한 정보를 저장하고 seat테이블의 status를 업데이트한다
+- reservation테이블에 row를 추가할 때, nest cronjob으로 5분 뒤 해당 id를 조회하고 상태를 확인한다. 만료 시간이 지났나면 해당 예약을 무효화한다.
+- reservation_id를 가지고 결제를 진행한다. 
 
-## Users 테이블
+### 시퀀스 다이어그램
+### 1. mock-server
+    nginx에서 /mock로 시작하는 요청은 MockServer로 전송한다
+```mermaid
+sequenceDiagram
+    participant User
+    participant Nginx
+    participant MockServer as MockServer(prism)
+    participant NestJs
 
-| 컬럼명       | 타입              | 제약조건                        | 설명             |
-|--------------|-------------------|---------------------------------|------------------|
-| `id`         | UUID              | Primary Key                     | 사용자 고유 식별자 |
-| `username`   | VARCHAR(255)       | NOT NULL                        | 사용자 이름       |
-| `email`      | VARCHAR(255)       | UNIQUE, NOT NULL                | 사용자 이메일     |
-| `balance`    | DECIMAL(10, 2)     | DEFAULT 0.00                    | 사용자 잔액       |
-| `created_at` | TIMESTAMP          | DEFAULT CURRENT_TIMESTAMP       | 생성일           |
-| `updated_at` | TIMESTAMP          | DEFAULT CURRENT_TIMESTAMP       | 수정일           |
+    User ->> Nginx: 요청 전송 (/mock 또는 다른 경로)
+    alt URL이 /mock으로 시작
+        Nginx ->> MockServer: 요청 전달 (/mock/*)
+        MockServer -->> Nginx: 응답
+    else 이외 나머지 경로
+        Nginx ->> NestJs: 요청 전달 (기타 경로)
+        NestJs -->> Nginx: 응답
+    end
+    Nginx -->> User: 응답 전송
+```
+### 2. 콘서트 목록 확인
+```mermaid
+sequenceDiagram
+    actor User as UI
+    participant NestJS
+    participant Postgres
 
-## Concerts 테이블
+    %% 1. 유저가 예약 가능한 콘서트 목록 요청
+    User ->> NestJS: GET /concerts
+    NestJS ->> Postgres: 예약 가능한 콘서트 목록 조회
+    Postgres -->> NestJS: 콘서트 목록 및 남은 좌석 수 반환
+    NestJS -->> User: 콘서트 목록 및 남은 좌석 수 응답
+```
 
-| 컬럼명        | 타입              | 제약조건                        | 설명             |
-|---------------|-------------------|---------------------------------|------------------|
-| `id`          | UUID              | Primary Key                     | 콘서트 고유 식별자 |
-| `name`        | VARCHAR(255)       | NOT NULL                        | 콘서트 이름       |
-| `venue`       | VARCHAR(255)       | NOT NULL                        | 콘서트 장소       |
-| `concert_date`| DATE              | NOT NULL                        | 콘서트 날짜       |
-| `created_at`  | TIMESTAMP          | DEFAULT CURRENT_TIMESTAMP       | 생성일           |
-| `updated_at`  | TIMESTAMP          | DEFAULT CURRENT_TIMESTAMP       | 수정일           |
+### 3. 대기열 등록
+```mermaid
+sequenceDiagram
+    actor User as UI
+    participant NestJS
+    participant Postgres
 
-## Seats 테이블
+    %% 1. 유저가 대기열 등록 요청
+    User ->> NestJS: POST /queue/token (concert_id, user_id)
+    NestJS ->> Postgres: 대기열 등록 (Queue 테이블)
+    Postgres -->> NestJS: 대기열 등록 완료
+    NestJS -->> User: 대기열 등록 완료 응답
+```
 
-| 컬럼명        | 타입              | 제약조건                                             | 설명                 |
-|---------------|-------------------|-----------------------------------------------------|----------------------|
-| `id`          | UUID              | Primary Key                                         | 좌석 고유 식별자      |
-| `concert_id`  | UUID              | REFERENCES Concerts(id)                             | 콘서트 ID             |
-| `seat_number` | INT               | NOT NULL, CHECK (seat_number >= 1 AND seat_number <= 50) | 좌석 번호            |
-| `status`      | VARCHAR(20)       | DEFAULT 'available'                                 | 좌석 상태 (available, reserved_temp, reserved_final) |
-| `created_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP                           | 생성일               |
-| `updated_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP                           | 수정일               |
-| **제약조건**  |                   | UNIQUE (concert_id, seat_number)                    | 좌석 번호는 콘서트당 고유 |
+### 4. 좌석 예약
+```mermaid
+sequenceDiagram
+    actor User as UI
+    participant NestJS
+    participant Postgres
+    participant NestJS(CronJob)
 
-## Queue 테이블
+    %% 1. 유저가 대기열 등록 요청
+    User ->> NestJS: POST /queue/token (concert_id, user_id)
+    NestJS ->> Postgres: 대기열 등록 (Queue 테이블)
+    Postgres -->> NestJS: 대기열 등록 완료
+    NestJS -->> User: 대기열 등록 완료 응답
 
-| 컬럼명        | 타입              | 제약조건                          | 설명               |
-|---------------|-------------------|-----------------------------------|--------------------|
-| `id`          | UUID              | Primary Key                       | 대기열 고유 식별자   |
-| `user_id`     | UUID              | REFERENCES Users(id)              | 사용자 ID           |
-| `concert_id`  | UUID              | REFERENCES Concerts(id)           | 콘서트 ID           |
-| `queue_position` | INT            | NOT NULL                          | 대기 순서           |
-| `wait_time`   | VARCHAR(50)       |                                   | 예상 대기 시간       |
-| `token`       | VARCHAR(255)      | UNIQUE                            | JWT 토큰           |
-| `created_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP         | 생성일             |
-| `updated_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP         | 수정일             |
-| **제약조건**  |                   | UNIQUE (user_id, concert_id)       | 사용자는 한 콘서트당 하나의 대기열만 가질 수 있음 |
+    %% 2. 유저가 자기 순서 확인 요청
+    User ->> NestJS: GET /queue/status (user_id)
+    NestJS ->> Postgres: 대기열 순서 조회
+    Postgres -->> NestJS: 대기열 순서 반환
+    NestJS -->> User: 대기열 순서 응답
 
-## Reservations 테이블
+    %% 3. 유저가 예약 가능한 좌석 요청
+    User ->> NestJS: GET /concerts/{concert_id}/seats
+    NestJS ->> Postgres: 예약 가능한 좌석 정보 조회
+    Postgres -->> NestJS: 예약 가능 좌석 정보 반환
+    NestJS -->> User: 예약 가능 좌석 정보 응답
 
-| 컬럼명        | 타입              | 제약조건                          | 설명              |
-|---------------|-------------------|-----------------------------------|-------------------|
-| `id`          | UUID              | Primary Key                       | 예약 고유 식별자    |
-| `user_id`     | UUID              | REFERENCES Users(id)              | 사용자 ID          |
-| `concert_id`  | UUID              | REFERENCES Concerts(id)           | 콘서트 ID          |
-| `seat_id`     | UUID              | REFERENCES Seats(id) UNIQUE       | 좌석 ID            |
-| `status`      | VARCHAR(20)       | DEFAULT 'pending'                 | 예약 상태 (pending, completed, canceled) |
-| `amount`      | DECIMAL(10, 2)    | NOT NULL                          | 결제 금액          |
-| `reserved_at` | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP         | 예약 시간          |
-| `payment_deadline` | TIMESTAMP    |                                   | 결제 마감 시간      |
-| `completed_at` | TIMESTAMP        |                                   | 완료 시간          |
-| `created_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP         | 생성일            |
-| `updated_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP         | 수정일            |
+    %% 4. 유저가 특정 좌석으로 예약 요청
+    User ->> NestJS: POST /reservation (concert_id, user_id, seat_id)
+    NestJS ->> Postgres: 좌석 상태를 'reserved_temp'로 변경 (Seats 테이블)
+    NestJS ->> Postgres: 예약 정보 생성 (Reservations 테이블, 상태: pending, 결제 마감 시간: +5분)
+    Postgres -->> NestJS: 좌석 상태 및 예약 정보 업데이트 완료
+    NestJS -->> User: 임시 예약 완료, 결제 정보 요청
 
-## Payments 테이블
+    %% 5. 예약 상태 확인 및 변경 (콜백 형태로 처리)
+    loop 5분 후
+        NestJS(CronJob) ->> Postgres: 예약 상태 확인 (예약_id)
+        Postgres -->> NestJS(CronJob): 예약 정보 반환
+        alt 예약 상태가 'pending'
+            NestJS(CronJob) ->> Postgres: 예약 상태를 'canceled'로 업데이트 (Reservations 테이블)
+            NestJS(CronJob) ->> Postgres: 좌석 상태를 'available'로 변경 (Seats 테이블)
+            Postgres -->> NestJS(CronJob): 좌석 및 예약 상태 업데이트 완료
+        else 예약 상태가 'completed'
+            %% 예약이 완료된 경우 아무 동작도 하지 않음
+        end
+    end
+```
 
-| 컬럼명        | 타입              | 제약조건                          | 설명              |
-|---------------|-------------------|-----------------------------------|-------------------|
-| `id`          | UUID              | Primary Key                       | 결제 고유 식별자    |
-| `reservation_id` | UUID           | REFERENCES Reservations(id)       | 예약 ID           |
-| `user_id`     | UUID              | REFERENCES Users(id)              | 사용자 ID          |
-| `amount`      | DECIMAL(10, 2)    | NOT NULL                          | 결제 금액          |
-| `payment_status` | VARCHAR(20)    | DEFAULT 'pending'                 | 결제 상태 (pending, success, failed) |
-| `payment_method` | VARCHAR(50)    | NOT NULL                          | 결제 방법 (예: credit_card, **페이) |
-| `created_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP         | 생성일            |
-| `updated_at`  | TIMESTAMP         | DEFAULT CURRENT_TIMESTAMP         | 수정일            |
+### 5. 결제
+```mermaid
+sequenceDiagram
+    actor User as UI
+    participant NestJS
+    participant Postgres
 
-# 2. API 명세
-[api-spec.yaml에서 자세한 내용을 보실 수 있습니다.]
+    %% 1. 유저가 결제 요청
+    User ->> NestJS: POST /payment (reservation_id, payment_method)
+    NestJS ->> Postgres: 결제 정보 생성 (Payments 테이블)
+    Postgres -->> NestJS: 결제 정보 저장 완료
 
-### 콘서트 예약 서비스 API 요약
+    %% 2. 예약 상태 업데이트
+    NestJS ->> Postgres: 예약 상태를 'completed'로 업데이트 (Reservations 테이블)
+    NestJS ->> Postgres: 좌석 상태를 'reserved_final'로 변경 (Seats 테이블)
+    Postgres -->> NestJS: 좌석 상태 및 예약 상태 업데이트 완료
+    NestJS -->> User: 결제 완료 및 예약 확정
+```
 
-- **GET /health**: 서비스 상태 확인 (OK/ERROR)
-- **POST /auth/login**: 사용자 로그인, JWT 토큰 발급
-- **POST /queue/token**: 콘서트 대기열 참여, 토큰 발급
-- **GET /concerts**: 예약 가능한 콘서트 목록 조회
-- **GET /concerts/{id}/seats**: 특정 콘서트 좌석 정보 조회
-- **POST /reservation**: 좌석 예약 요청, 임시 홀딩
-- **GET /balance**: 사용자 잔액 조회
-- **POST /balance**: 사용자 잔액 충전
-- **POST /payment**: 좌석 예약 결제 완료
+### 6. 전체
+```mermaid
+sequenceDiagram
+    participant User
+    participant Nginx
+    participant MockServer(prism)
+    participant NestJS
+    participant Postgres
+    participant NestJS(CronJob)
 
-# 3. Mock API
-## 요약:
-- openapi 문서를 mock server로 만들어주는 npm 라이브러리 prism을 사용했습니다.
-### How to start
-- 직접 실행하는 법:
-  ```bash
-  chmod +x ./run-mock-server.sh
-  ./run-mock-server.sh
-    ```
-- nginx와 함께 실행하는 법:
-  ```bash
-    docker compose up
-    ```
+    %% 1. Mock Server 요청 처리
+    User ->> Nginx: 요청 전송 (/mock 또는 다른 경로)
+    alt URL이 /mock으로 시작
+        Nginx ->> MockServer: 요청 전달 (/mock/*)
+        MockServer -->> Nginx: 응답
+    else 이외 나머지 경로
+        Nginx ->> NestJS: 요청 전달 (기타 경로)
+        NestJS -->> Nginx: 응답
+    end
+    Nginx -->> User: 응답 전송
+
+    %% 2. 유저가 예약 가능한 콘서트 목록 요청
+    User ->> NestJS: GET /concerts
+    NestJS ->> Postgres: 예약 가능한 콘서트 목록 조회
+    Postgres -->> NestJS: 콘서트 목록 및 남은 좌석 수 반환
+    NestJS -->> User: 콘서트 목록 및 남은 좌석 수 응답
+
+    %% 3. 유저가 대기열 등록 요청
+    User ->> NestJS: POST /queue/token (concert_id, user_id)
+    NestJS ->> Postgres: 대기열 등록 (Queue 테이블)
+    Postgres -->> NestJS: 대기열 등록 완료
+    NestJS -->> User: 대기열 등록 완료 응답
+
+    %% 4. 유저가 자기 순서 확인 요청
+    User ->> NestJS: GET /queue/status (user_id)
+    NestJS ->> Postgres: 대기열 순서 조회
+    Postgres -->> NestJS: 대기열 순서 반환
+    NestJS -->> User: 대기열 순서 응답
+
+    %% 5. 유저가 예약 가능한 좌석 요청
+    User ->> NestJS: GET /concerts/{concert_id}/seats
+    NestJS ->> Postgres: 예약 가능한 좌석 정보 조회
+    Postgres -->> NestJS: 예약 가능 좌석 정보 반환
+    NestJS -->> User: 예약 가능 좌석 정보 응답
+
+    %% 6. 유저가 특정 좌석으로 예약 요청
+    User ->> NestJS: POST /reservation (concert_id, user_id, seat_id)
+    NestJS ->> Postgres: 좌석 상태를 'reserved_temp'로 변경 (Seats 테이블)
+    NestJS ->> Postgres: 예약 정보 생성 (Reservations 테이블, 상태: pending, 결제 마감 시간: +5분)
+    Postgres -->> NestJS: 좌석 상태 및 예약 정보 업데이트 완료
+    NestJS -->> User: 임시 예약 완료, 결제 정보 요청
+
+    %% 7. 예약 상태 확인 및 변경 (콜백 형태로 처리)
+    loop 5분 후
+        NestJS(CronJob) ->> Postgres: 예약 상태 확인 (예약_id)
+        Postgres -->> NestJS(CronJob): 예약 정보 반환
+        alt 예약 상태가 'pending'
+            NestJS(CronJob) ->> Postgres: 예약 상태를 'canceled'로 업데이트 (Reservations 테이블)
+            NestJS(CronJob) ->> Postgres: 좌석 상태를 'available'로 변경 (Seats 테이블)
+            Postgres -->> NestJS(CronJob): 좌석 및 예약 상태 업데이트 완료
+        else 예약 상태가 'completed'
+            %% 예약이 완료된 경우 아무 동작도 하지 않음
+        end
+    end
+
+    %% 8. 유저가 결제 요청
+    User ->> NestJS: POST /payment (reservation_id, payment_method)
+    NestJS ->> Postgres: 결제 정보 생성 (Payments 테이블)
+    Postgres -->> NestJS: 결제 정보 저장 완료
+
+    %% 9. 예약 상태 업데이트
+    NestJS ->> Postgres: 예약 상태를 'completed'로 업데이트 (Reservations 테이블)
+    NestJS ->> Postgres: 좌석 상태를 'reserved_final'로 변경 (Seats 테이블)
+    Postgres -->> NestJS: 좌석 상태 및 예약 상태 업데이트 완료
+    NestJS -->> User: 결제 완료 및 예약 확정
+```
