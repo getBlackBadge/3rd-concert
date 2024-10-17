@@ -224,7 +224,7 @@ paths:
   /reservation:
     post:
       summary: 좌석 예약 요청
-      description: consert의 특정 좌석 예약을 요청하며, 해당 좌석은 제한된 시간(5분) 동안 사용자에게 임시로 홀딩됩니다.
+      description: concert의 특정 좌석 예약을 요청하며, 해당 좌석은 제한된 시간(5분) 동안 사용자에게 임시로 홀딩됩니다.
       tags:
         - 예약
       security:
