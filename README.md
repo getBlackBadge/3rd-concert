@@ -2,6 +2,7 @@
 <img width="1440" alt="Screenshot 2024-10-18 at 1 33 26 AM" src="https://github.com/user-attachments/assets/5dca9e2d-39a7-412e-9e09-6ed2576b9ba5">
 
 ## swagger 구현부
+```javascript
 /src.main.ts:
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -24,3 +25,4 @@ async function bootstrap() {
   await app.listen(3000);
 }
 bootstrap();
+```
