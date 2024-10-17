@@ -1,21 +1,22 @@
 import { Module, Global } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-// import { TypeOrmModule } from '@nestjs/typeorm';
-// import AppDataSource from './database/ormconfig';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import AppDataSource from './common/config/ormconfig';
 // import { redisProvider } from './database/redisconfig';
+import { ApiModule } from './api/api.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Global()
 @Module({
   imports: [
-    // TypeOrmModule.forRoot(AppDataSource.options),
+    TypeOrmModule.forRoot(AppDataSource.options),
+    ScheduleModule.forRoot(),
+    ApiModule,
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
-    AppService,
-    // redisProvider,
   ],
   // exports: [redisProvider],
   exports: [],
 })
 export class AppModule {}
+
