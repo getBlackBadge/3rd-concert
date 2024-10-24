@@ -8,13 +8,11 @@ export class Queue {
   @PrimaryGeneratedColumn('uuid')
   id: string = uuid();
 
-  @ManyToOne(() => User, user => user.id)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  @Column({ type: 'uuid' })
+  user_id: string; 
 
-  @ManyToOne(() => Concert, concert => concert.id)
-  @JoinColumn({ name: 'concert_id' })
-  concert: Concert;
+  @Column({ type: 'uuid' })
+  concert_id: string; 
 
   @Column({ type: 'int' })
   queue_position: number;
@@ -22,7 +20,7 @@ export class Queue {
   @Column({ type: 'int' })
   wait_time_minutes: number; // 대기 시간 (분 단위)
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 1024 })
   token: string; // JWT 토큰
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

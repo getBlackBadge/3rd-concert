@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # OpenAPI 파일 경로 설정
-OPENAPI_FILE="./api-spec.yaml"
+OPENAPI_FILE="./docs/api-spec.yaml"
 
 # 사용할 포트 번호 설정 dev:3001, test:3005 로 쓸 예정
 PORT=3005

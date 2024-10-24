@@ -21,8 +21,8 @@
     "sonar": "node report.js",
     "typeorm": "typeorm-ts-node-commonjs",
     "migrate:create": "npm run typeorm migration:create -- -n",
-    "migrate:up": "npm run typeorm migration:run -- -d src/common/config/ormconfig.ts",
-    "migrate:down": "npm run typeorm migration:revert -- -d src/common/config/ormconfig.ts"
+    "migrate:up": "npm run typeorm migration:run -- -d src/common/config/orm.config.ts",
+    "migrate:down": "npm run typeorm migration:revert -- -d src/common/config/orm.config.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.2",
@@ -40,14 +40,18 @@
     "class-validator": "^0.14.1",
     "cron": "^3.1.7",
     "jsonwebtoken": "^9.0.2",
+    "nest-winston": "^1.9.7",
     "pg": "^8.13.0",
     "raw-body": "^2.5.2",
     "redis": "^4.7.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
+    "testcontainers": "^10.13.2",
     "typeorm": "^0.3.20",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "winston": "^3.15.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.2",

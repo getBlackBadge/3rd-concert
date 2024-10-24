@@ -1,26 +1,25 @@
 import { Module } from '@nestjs/common';
-import { BalanceService } from './services/balance.service';
-import { PaymentService } from './services/payment.service';
-import { QueueService } from './services/queue.service';
-import { ReservationService } from './services/reservation.service';
-import { DomainModule } from 'src/domain/domain.module';
-import { JwtModule } from 'src/common/jwt/jwt.module';
+import { BalanceFacade } from './facades/balance.facade';
+import { PaymentFacade } from './facades/payment.facade';
+import { QueueFacade } from './facades/queue.facade';
+import { ReservationFacade } from './facades/reservation.facade';
+import { JwtModule } from '../common/jwt/jwt.module';
+import { DomainModule } from '../domain/domain.module';
 
 @Module({
   imports: [DomainModule, JwtModule],
-
   controllers: [],
   providers: [
-    BalanceService,
-    PaymentService,
-    QueueService,
-    ReservationService,
+    BalanceFacade,
+    PaymentFacade,
+    QueueFacade,
+    ReservationFacade,
   ],
   exports: [
-    BalanceService,
-    PaymentService,
-    QueueService,
-    ReservationService,
+    BalanceFacade,
+    PaymentFacade,
+    QueueFacade,
+    ReservationFacade,
   ],
 })
-export class ApplicationModule {}
+export class FacadeModule {}

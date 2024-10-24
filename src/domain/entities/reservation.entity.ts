@@ -9,17 +9,26 @@ export class Reservation {
   @PrimaryGeneratedColumn('uuid')
   id: string = uuid();
 
-  @ManyToOne(() => User, user => user.id)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  // @ManyToOne(() => User, user => user.id)
+  // @JoinColumn({ name: 'user_id' })
+  // user: User;
 
-  @ManyToOne(() => Concert, concert => concert.id)
-  @JoinColumn({ name: 'concert_id' })
-  concert: Concert;
+  // @ManyToOne(() => Concert, concert => concert.id)
+  // @JoinColumn({ name: 'concert_id' })
+  // concert: Concert;
+  
+  // @ManyToOne(() => Seat, seat => seat.id)
+  // @JoinColumn({ name: 'seat_id' })
+  // seat: Seat;
 
-  @ManyToOne(() => Seat, seat => seat.id)
-  @JoinColumn({ name: 'seat_id' })
-  seat: Seat;
+  @Column({ type: 'uuid' })
+  user_id: string; 
+
+  @Column({ type: 'uuid' })
+  concert_id: string; 
+
+  @Column({ type: 'uuid' })
+  seat_id: string; 
 
   @Column({ type: 'varchar', length: 20, default: 'pending' })
   status: string; // pending, completed, canceled

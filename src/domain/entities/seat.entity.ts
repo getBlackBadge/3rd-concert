@@ -7,9 +7,11 @@ export class Seat {
   @PrimaryGeneratedColumn('uuid')
   id: string = uuid();
 
-  @ManyToOne(() => Concert, concert => concert.id)
-  @JoinColumn({ name: 'concert_id' })
-  concert: Concert;
+  // @ManyToOne(() => Concert, concert => concert.id)
+  // @JoinColumn({ name: 'concert_id' })
+  // concert: Concert;
+  @Column({ type: 'uuid' })
+  concert_id: string; 
 
   @Column({ type: 'int' })
   seat_number: number;
