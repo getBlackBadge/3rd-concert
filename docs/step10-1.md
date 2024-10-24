@@ -5,7 +5,7 @@
 
 ## 실행방법
 ```bash
-npm test npm test src/application/facades/test/queue.facade.spec.ts   
+npm test src/application/facades/test/queue.facade.spec.ts   
 ```
 
 ## 테스트 환경 설정
@@ -25,7 +25,7 @@ npm test npm test src/application/facades/test/queue.facade.spec.ts
 
 ## 실행방법
 ```bash
-npm test npm test src/application/facades/test/balance.facade.spec.ts   
+npm test src/application/facades/test/balance.facade.spec.ts   
 ```
 
 ## 테스트 환경 설정
