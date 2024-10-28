@@ -102,12 +102,12 @@ describe('QueueFacade', () => {
     );
     // Step 3: 모든 사용 요청 완료 대기 중
     console.log('Step 3: 모든 사용 요청 완료 대기 중...');
-    const results = await Promise.all(usageRequests);
+    const results = await Promise.allSettled(usageRequests);
     console.log('모든 사용 요청 완료.');
 
     // Step 4: 성공과 실패 횟수 계산
-    const successCount = results.filter(result => result.success).length;
-    const failureCount = results.filter(result => !result.success).length;
+    const successCount = results.filter(result => result.status === 'fulfilled').length;
+    const failureCount = results.filter(result => result.status === 'rejected').length;
     console.log(`성공 횟수: ${successCount}, 실패 횟수: ${failureCount}`);
 
     // Step 5: 50번 성공, 20번 실패 확인
