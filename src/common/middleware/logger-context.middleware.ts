@@ -15,7 +15,7 @@ export class LoggerContextMiddleware implements NestMiddleware {
     res.on('finish', () => {
       const { statusCode } = res;
       this.logger.log(
-        `요청 처리 완료: ${datetime} ${method} ${originalUrl} ${statusCode} ${__filename}`,
+        `요청 처리 완료: ${datetime.toISOString()} ${method} ${originalUrl} ${statusCode} ${__filename}`,
       );
     });
 

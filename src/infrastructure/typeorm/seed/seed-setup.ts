@@ -25,7 +25,8 @@ export class Seed1729080559632 implements MigrationInterface {
                 "status" varchar(20) DEFAULT 'available',
                 "price" int NOT NULL,
                 "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
-                "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+                "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE ("concert_id", "seat_number")
             );
         `);
                 
