@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { TestingModule, Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { QueueFacade } from '../queue.facade'; // 경로에 따라 import 조정
+import { QueueFacade } from '../queue.facade';
 import { Queue } from '../../../domain/entities/queue.entity';
 import { Concert } from '../../../domain/entities/concert.entity';
 import { User } from '../../../domain/entities/user.entity';
@@ -11,6 +11,11 @@ import { GenericContainer } from 'testcontainers';
 import { QueueService } from '../../../domain/services/queue.service';
 import { ConcertService } from '../../../domain/services/concert.service';
 import { UserService } from '../../../domain/services/user.service';
+import { RedisLockManager } from '../../../common/managers/locks/redis-wait-lock.manager'
+import { RedisRepository } from '../../../infrastructure/redis/redis.repository'
+import { redisClient } from '../../../common/config/redis.config';
+import { createClient } from 'redis';
+import { RedisClientType } from 'redis';
 
 describe('QueueFacade', () => {
   let facade: QueueFacade;
@@ -23,14 +28,31 @@ describe('QueueFacade', () => {
   let queueService;
   let concertService;
   let userService;
+  let redisClient
+  let redisRepository;
 
   beforeAll(() => {
     jest.setTimeout(20000); // 전체 테스트 스위트에 대한 타임아웃을 20초로 설정
   });
 
   beforeEach(async () => {
+    const redisContainer = await new GenericContainer('redis')
+    .withExposedPorts(6379)
+    .start();
+
+    const redisHost = redisContainer.getHost();
+    const redisPort = redisContainer.getMappedPort(6379);
+
+    redisClient = await createClient(
+        {
+            url: `redis://${redisHost}:${redisPort}`
+        }
+    )
+    .on('error', err => console.log('Redis 클라이언트 오류', err))
+    .connect() as RedisClientType;
+    redisRepository = new RedisRepository(redisClient);
     // PostgreSQL 컨테이너 시작
-    const container = await new GenericContainer('postgres')
+    const psqlContainer = await new GenericContainer('postgres')
       .withEnvironment({
         POSTGRES_USER: 'postgres',
         POSTGRES_PASSWORD: 'password',
@@ -39,8 +61,8 @@ describe('QueueFacade', () => {
       .withExposedPorts(5432)
       .start();
 
-    const port = container.getMappedPort(5432);
-    const host = container.getHost();
+    const port = psqlContainer.getMappedPort(5432);
+    const host = psqlContainer.getHost();
 
     // TypeORM DataSource 초기화
     dataSource = new DataSource({
@@ -57,7 +79,7 @@ describe('QueueFacade', () => {
       },
     });
     await dataSource.initialize();
-    //max connetcion default인 10개의 커넥션이 풀
+    // 최대 커넥션 기본값인 10개의 커넥션이 풀
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -100,6 +122,12 @@ describe('QueueFacade', () => {
           provide: DataSource,
           useValue: dataSource,
         },
+        {
+          provide: RedisLockManager,
+          useValue: new RedisLockManager(
+            redisRepository,
+          ),
+        },
         QueueFacade,
         JwtService,
       ],
@@ -134,7 +162,7 @@ describe('QueueFacade', () => {
     }
   });
 
-  it('동시 요청을 처리하고 순차적인 대기열 위치를 할당해야 합니다', async () => {
+  it('동시 요청을 처리하고 순차적인 대기열 위치를 할당해야 합니다 {예상 결과 : 동시에 100개 요청 시도 후 1 - 100 까지 모든 순서가 중복없이 부여}', async () => {
     const reqAmount = 100;
     const users = Array.from({ length: reqAmount }, () => ({
       id: uuid(), // UUID 생성
@@ -148,15 +176,15 @@ describe('QueueFacade', () => {
 
     const createTokenDtos = users.map(user => ({ userId: user.id, concertId: concertIdGlobal }));
 
-    // Create multiple instances of QueueFacade and invoke them concurrently
+    // QueueFacade의 여러 인스턴스를 생성하고 동시에 호출
     const results = await Promise.all(createTokenDtos.map(dto => {
-      return facade.createToken(dto); // Call the service method
+      return facade.createToken(dto); // 서비스 메서드 호출
     }));
 
     const uniquePosition = new Set();
     results.forEach(result => {
       expect(result).toBeDefined();
-      const decodedResult =jwtService.decodeToken(result)
+      const decodedResult = jwtService.decodeToken(result)
       uniquePosition.add(decodedResult["queuePosition"]);
     });
 

@@ -14,29 +14,30 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=password
       - DB_NAME=concert_service_db
+      - REDIS_HOST=redis
+      - REDIS_port=6379
     volumes:
       - .:/app
     ports:
       - "3001:3000"
     tty: true
     command: sh -c "npm run migrate:up && npx nodemon"
-    # command: npx nodemon
     depends_on:
-      # - redis 
+      - redis 
       - postgres
     networks:
       - app-network 
   
-  # redis:
-  #   image: redis:7.2.3-alpine3.18
-  #   container_name: redis-server
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - ./data:/data
-  #   command: redis-server --appendonly yes
-  #   networks:
-  #     - app-network
+  redis:
+    image: redis:7.2.3-alpine3.18
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
 
   postgres:
     image: postgres:15-alpine

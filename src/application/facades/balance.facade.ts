@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { BalanceService } from '../../domain/services/balance.service';
 import { UserService } from '../../domain/services/user.service';
-
+import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
 @Injectable()
 export class BalanceFacade {
   constructor(
     private readonly balanceService: BalanceService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly redisLockManager: RedisLockManager
   ) {}
 
   /**
@@ -41,6 +42,8 @@ export class BalanceFacade {
    */
     async decreaseBalance(userId: string, amount: number): Promise<void> {
       this.userService.validateUserById(userId)
-      return this.balanceService.decreaseBalance(userId, amount)
+      return await this.redisLockManager.withLockBySrc(userId, "user", async () => {
+        return await this.balanceService.decreaseBalance(userId, amount);
+      });
     }
 }

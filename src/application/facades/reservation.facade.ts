@@ -8,7 +8,7 @@ import { Reservation } from '../../domain/entities/reservation.entity';
 import { Seat } from '../../domain/entities/seat.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '../../common/jwt/jwt.service';
-
+import { RedisNoWaitLockManager } from '../../common/managers/locks/redis-nowait-lock.manager';
 
 @Injectable()
 export class ReservationFacade {
@@ -23,7 +23,8 @@ export class ReservationFacade {
     private readonly seatService: SeatService,
     private readonly reservationService: ReservationService,
     private readonly concertService: ConcertService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly redisNoWaitLockManager: RedisNoWaitLockManager
   ) {}
   /**
    * 좌석 예약 요청 처리
@@ -44,32 +45,40 @@ export class ReservationFacade {
     // verifytoken
     this.concertService.verifyConcert(concertId)
     this.seatService.checkSeatAvailability(seatNumber, concertId)
+    const resourceKey = this.getResourceKeyForReservation(concertId, seatNumber)
+    console.log(resourceKey)
 
-    const targetSeat= await this.seatService.getOrCreateSeat(seatNumber, concertId)
+    return await this.redisNoWaitLockManager.withLockBySrc(resourceKey, "seat", async () => {
 
-    // withlock
-    return this.dataSource.transaction(async (transactionalEntityManager) => {
-      console.log('트랜잭션 시작');
-      console.log(`seat ID ${targetSeat.id}에 대한 락 획득 시도`);
+      return await this.dataSource.transaction(async (transactionalEntityManager) => {
+      
+      // withlock
+        const targetSeat= await this.seatService.getOrCreateSeat(seatNumber, concertId)
+        console.log(`seat ID ${targetSeat.id}에 대한 락 획득 시도`);
+        console.log('트랜잭션 시작');
+  
+        let seatRepository = transactionalEntityManager.withRepository(this.seatRepository);
+        let reservationRepository = transactionalEntityManager.withRepository(this.reservationRepository);
+  
+        const seat = await seatRepository.findOne({
+            where: { id: targetSeat.id },
+        });
+        this.seatService.checkSeatStatue(seat)
 
-      let seatRepository = transactionalEntityManager.withRepository(this.seatRepository);
-      let reservationRepository = transactionalEntityManager.withRepository(this.reservationRepository);
+        const reservation = await this.reservationService.createReservation(userId, seat.id, concertId, seat.price, reservationRepository)
+        await this.seatService.updateSeatStatus(seat.id, "reserved_temp")
+        
+        // 예약 만료 처리를 위한 스케줄링
+        this.reservationService.scheduleReservationExpiration(reservation.id, reservation.payment_deadline)
+  
+        return {
+            message: `좌석 ${seatNumber}이(가) 임시 예약되었습니다.`,
+            reservationId: reservation.id
+          };
+        }
+        )
+    })
 
-      const seat = await seatRepository.findOne({
-          where: { id: targetSeat.id },
-          lock: { mode: 'pessimistic_write' },
-      });
-      this.seatService.checkSeatStatue(seat)
-      const reservation = await this.reservationService.createReservation(userId, seat.id, concertId, seat.price, reservationRepository)
-      this.reservationService.scheduleReservationExpiration(reservation.id, reservation.payment_deadline)
-
-      // 예약 만료 처리를 위한 스케줄링
-      return {
-          message: `좌석 ${seatNumber}이(가) 임시 예약되었습니다.`,
-          reservationId: reservation.id
-        };
-      }
-      )
 
   }
 
@@ -96,4 +105,8 @@ export class ReservationFacade {
     };
 
   }
+  private getResourceKeyForReservation(concert_id: string, seat_number: number): string {
+    return `${concert_id}:${seat_number}`;
+  }
+
 }

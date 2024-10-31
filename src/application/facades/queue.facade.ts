@@ -9,7 +9,7 @@ import { ConcertService } from '../../domain/services/concert.service';
 import { UserService } from '../../domain/services/user.service';
 import { Concert } from '../../domain/entities/concert.entity';
 import { Queue } from '../../domain/entities/queue.entity';
-
+import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
 @Injectable()
 export class QueueFacade {
   constructor(
@@ -23,6 +23,7 @@ export class QueueFacade {
     private readonly userService: UserService,
     private readonly dataSource: DataSource,
     private jwtService: JwtService,
+    private redisLockManager: RedisLockManager
   ) {}
 
   async createToken(createTokenDto: CreateTokenDto): Promise<string> {
@@ -30,37 +31,41 @@ export class QueueFacade {
       const concert = await this.concertService.getConcertById(concertId);
 
 
-      return this.dataSource.transaction(async (transactionalEntityManager) => {
-        // console.log('트랜잭션 시작');
-    
-        let concertRepository = transactionalEntityManager.withRepository(this.concertRepository);
-        let queueRepository = transactionalEntityManager.withRepository(this.queueRepository);
-        const concert = await concertRepository.findOne({
-          where: { id: createTokenDto.concertId },
-          lock: { mode: 'pessimistic_write' },
-        });
-        console.log(`concert ID ${createTokenDto.concertId}에 대한 락 획득. userId : ${createTokenDto.userId}`);
+      return await this.redisLockManager.withLockBySrc(concertId, "concert", async () => {
 
-
-        const queueCount = await this.queueService.getQueueCountByConcertId(concertId, concertRepository)
-
-        const newQCount = queueCount + 1 
-        // JWT 토큰 생성
-        const tokenPayload = {
-          userId: createTokenDto.userId,
-          concertId: createTokenDto.concertId,
-          queuePosition: queueCount + 1,
-        };
-        const token = this.jwtService.generateToken(tokenPayload);
-        // console.log('새로운 대기열 엔트리 생성');
-        await this.queueService.createQueue(userId, concertId, newQCount, token, queueRepository)
-        // console.log('concert queue_count 1 증가');
-        await this.queueService.updateQueueCount(concertId, newQCount, concertRepository)
-
-        return token;
-      }
-      )
+        return await this.dataSource.transaction(async (transactionalEntityManager) => {
+          console.log(`concert ID ${concertId}에 대한 락 획득. userId : ${userId}`);
+      
+          let concertRepository = transactionalEntityManager.withRepository(this.concertRepository);
+          let queueRepository = transactionalEntityManager.withRepository(this.queueRepository);
+          const concert = await concertRepository.findOne({
+            where: { id: concertId },
+          });
+  
+  
+          const queueCount = await this.queueService.getQueueCountByConcertId(concertId, concertRepository)
+  
+          const newQCount = queueCount + 1 
+          // JWT 토큰 생성
+          const tokenPayload = {
+            userId: createTokenDto.userId,
+            concertId: createTokenDto.concertId,
+            queuePosition: queueCount + 1,
+          };
+          const token = this.jwtService.generateToken(tokenPayload);
+          // console.log('새로운 대기열 엔트리 생성');
+          await this.queueService.createQueue(userId, concertId, newQCount, token, queueRepository)
+          console.log(`concert queue_count 1 증가 queueCount: ${queueCount + 1}`);
+          await this.queueService.updateQueueCount(concertId, newQCount, concertRepository)
+          if (!token) {
+            throw new Error('Token generation failed');
+          }
+          return token;
+        }
+        )
+      } ) 
     }
+      
 
   async getQueueStatus(getQueueStatusDto: QueueStatusRequestDto): Promise<QueueStatusResDto> {
     // JWT 토큰 검증 및 디코딩
