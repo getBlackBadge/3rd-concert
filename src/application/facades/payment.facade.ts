@@ -3,12 +3,15 @@ import { BalanceService } from '../../domain/services/balance.service';
 import { ReservationService } from '../../domain/services/reservation.service';
 import { SeatService } from '../../domain/services/seat.service';
 import { PaymentDto } from '../../presentation/dto/payment.dto'
+import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
+
 @Injectable()
 export class PaymentFacade {
   constructor(
     private readonly balanceService: BalanceService,
     private readonly reservationService: ReservationService,
     private readonly seatService: SeatService,
+    private readonly redisLockManager: RedisLockManager
 
   ) {}
 
@@ -28,7 +31,9 @@ export class PaymentFacade {
 
     const reservation = await this.reservationService.getReservationById(reservationId)
     const price = await this.seatService.getPriceById(reservation.seat_id)
-    await this.balanceService.decreaseBalance(reservationId, price)
+    await this.redisLockManager.withLockBySrc(userId, "user", async ()=>{
+      await this.balanceService.decreaseBalance(userId, price)
+    })
     await this.reservationService.updateReservation(reservationId, 
       {
         "status": "completed",
