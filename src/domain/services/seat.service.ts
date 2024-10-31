@@ -44,6 +44,17 @@ export class SeatService implements SeatServiceInterface {
     }
     return true
   }
+  async updateSeatStatus(seatId: string, newStatus: string): Promise<Seat> {
+    const seat = await this.seatRepository.findOne({
+      where: { id: seatId }
+    });
+    if (!seat) {
+      throw new NotFoundException("해당 좌석을 찾을 수 없습니다");
+    }
+    seat.status = newStatus;
+    await this.seatRepository.save(seat);
+    return seat;
+  }
 
   async checkSeatAvailability(seatNumber: number, concertId: string): Promise<boolean> {
     if (seatNumber < 1 || seatNumber > 50) {
@@ -58,7 +69,7 @@ export class SeatService implements SeatServiceInterface {
     return true
   }
 
-  async getOrCreateSeat(seatNumber: number, concertId: string, status: string = 'reserved_temp'): Promise<Seat> {
+  async getOrCreateSeat(seatNumber: number, concertId: string, status: string = 'available'): Promise<Seat> {
     let seat = await this.seatRepository.findOne({
       where: { seat_number: seatNumber, concert_id: concertId }
     });
