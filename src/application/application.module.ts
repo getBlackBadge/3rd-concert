@@ -5,9 +5,10 @@ import { QueueFacade } from './facades/queue.facade';
 import { ReservationFacade } from './facades/reservation.facade';
 import { JwtModule } from '../common/jwt/jwt.module';
 import { DomainModule } from '../domain/domain.module';
+import { LockModule } from '../common/managers/locks/lock.module';
 
 @Module({
-  imports: [DomainModule, JwtModule],
+  imports: [DomainModule, JwtModule, LockModule],
   controllers: [],
   providers: [
     BalanceFacade,
