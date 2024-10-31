@@ -32,7 +32,6 @@ export class BalanceService implements BalanceServiceInterface{
     await this.dataSource.transaction(async (transactionalEntityManager) => {
       const user = await transactionalEntityManager.findOne(User, {
         where: { id: userId },
-        lock: { mode: 'pessimistic_write' },
       });
 
       if (!user) {
