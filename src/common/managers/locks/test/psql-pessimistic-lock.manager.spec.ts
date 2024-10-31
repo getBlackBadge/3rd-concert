@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PeLockManager } from '../psql-pessimistic-lock.manager'; // Adjust the path if necessary
+import { PeLockManager } from '../psql-pessimistic-lock.manager';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Concert } from '../../../../domain/entities/concert.entity';
 import { Queue } from '../../../../domain/entities/queue.entity';
@@ -25,7 +25,7 @@ describe('LockManager', () => {
     });
 
     beforeEach(async () => {
-        // Start PostgreSQL container
+        // PostgreSQL 컨테이너 시작
         const container = await new GenericContainer('postgres')
             .withEnvironment({
             POSTGRES_USER: 'postgres',
@@ -102,20 +102,20 @@ describe('LockManager', () => {
         }
       });
 
-    it('should acquire lock and execute operation successfully', async () => {
+    it('잠금을 획득하고 작업을 성공적으로 실행해야 합니다', async () => {
         const resourceId = uuidv4();
         const resourceType = 'concert';
         const mockOperation = jest.fn().mockResolvedValue('success');
 
         await concertRepository.save({
             id: resourceId,
-            name: 'Test Concert',
-            venue: 'Test Venue',
+            name: '테스트 콘서트',
+            venue: '테스트 장소',
             concert_date: new Date(), 
             max_seats: 50, 
             max_queue: 100, 
             queue_count: 0,
-        }); // Prepopulate the database
+        }); // 데이터베이스를 미리 채웁니다
 
         const result = await lockManager.withLockBySrc(resourceId, resourceType, mockOperation);
 
@@ -126,13 +126,13 @@ describe('LockManager', () => {
     it('lock 안에서 queue_count를 +1 씩 100번 실행하면 동시 수정 없이 queue_count를 100으로 증가시킬 수 있어야 한다', async () => {
         const resourceId = uuidv4();
         const resourceType = 'concert';
-        const initialName = 'Initial Concert';
+        const initialName = '초기 콘서트';
         
         // 리소스를 초기화
         await concertRepository.save({
             id: resourceId,
             name: initialName,
-            venue: 'Test Venue',
+            venue: '테스트 장소',
             concert_date: new Date(),
             max_seats: 50,
             max_queue: 100,
@@ -168,13 +168,13 @@ describe('LockManager', () => {
     it('반대로 LockManager 없이 동시에 수정할 시, queue_count를 100으로 증가시키는 데 실패해야 한다', async () => {
         const resourceId = uuidv4();
         const resourceType = 'concert';
-        const initialName = 'Initial Concert';
+        const initialName = '초기 콘서트';
     
         // 리소스를 초기화
         await concertRepository.save({
             id: resourceId,
             name: initialName,
-            venue: 'Test Venue',
+            venue: '테스트 장소',
             concert_date: new Date(),
             max_seats: 50,
             max_queue: 100,
@@ -210,33 +210,31 @@ describe('LockManager', () => {
         expect(updatedResource.queue_count).not.toBe(100);
     });
     
-
-
-    it('should throw an error if resource is not found', async () => {
+    it('리소스를 찾을 수 없으면 오류를 발생시켜야 한다', async () => {
         const resourceId = uuidv4();
         const resourceType = 'concert';
         const mockOperation = jest.fn();
 
         await expect(lockManager.withLockBySrc(resourceId, resourceType, mockOperation))
-            .rejects.toThrow(`resource ${resourceType} with ID ${resourceId} not found`);
+            .rejects.toThrow(`리소스 ${resourceType} ID ${resourceId}를 찾을 수 없습니다`);
     });
 
-    it('should rollback transaction on error', async () => {
+    it('오류 발생 시 트랜잭션을 롤백해야 한다', async () => {
         const resourceId = uuidv4();
         const resourceType = 'concert';
-        const mockOperation = jest.fn().mockRejectedValue(new Error('operation failed'));
+        const mockOperation = jest.fn().mockRejectedValue(new Error('작업 실패'));
 
         await concertRepository.save({
             id: resourceId,
-            name: 'Test Concert',
-            venue: 'Test Venue',
+            name: '테스트 콘서트',
+            venue: '테스트 장소',
             concert_date: new Date(), 
             max_seats: 50, 
             max_queue: 100, 
             queue_count: 0,
-        }); // Prepopulate the database
+        }); // 데이터베이스를 미리 채웁니다
 
         await expect(lockManager.withLockBySrc(resourceId, resourceType, mockOperation))
-            .rejects.toThrow('operation failed');
+            .rejects.toThrow('작업 실패');
     });
 });

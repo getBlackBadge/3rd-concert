@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RedisLockManager } from '../redis-nowait-lock.manager';
+import { RedisNoWaitLockManager } from '../redis-nowait-lock.manager';
 import { RedisRepository } from '../../../../infrastructure/redis/redis.repository';
 import { GenericContainer } from 'testcontainers';
 import { createClient, RedisClientType } from 'redis';
 
 describe('RedisLockManager', () => {
-    let redisLockManager: RedisLockManager;
+    let redisLockManager: RedisNoWaitLockManager;
     let redisRepository: RedisRepository;
     let container: GenericContainer;
     let redisClient: RedisClientType;
@@ -27,13 +27,13 @@ describe('RedisLockManager', () => {
                 url: `redis://${redisHost}:${redisPort}`
             }
         )
-        .on('error', err => console.log('Redis Client Error', err))
+        .on('error', err => console.log('Redis 클라이언트 오류', err))
         .connect() as RedisClientType;
 
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                RedisLockManager,
+                RedisNoWaitLockManager,
                 RedisRepository,
                 {
                     provide: 'redisClient', // redisClient 주입 설정
@@ -42,7 +42,7 @@ describe('RedisLockManager', () => {
             ],
         }).compile();
 
-        redisLockManager = module.get<RedisLockManager>(RedisLockManager);
+        redisLockManager = module.get<RedisNoWaitLockManager>(RedisNoWaitLockManager);
         redisRepository = module.get<RedisRepository>(RedisRepository);
     });
 
@@ -56,75 +56,39 @@ describe('RedisLockManager', () => {
       });
 
       describe('withLockBySrc', () => {
-        it('should acquire lock and increment a shared counter sequentially for 100 requests', async () => {
+        it('잠금을 획득하고 100개의 요청에 대해 공유 카운터를 순차적으로 증가시켜야 합니다', async () => {
             const resourceId = 'testResourceId';
             const resourceType = 'testResourceType';
             const counterKey = 'sharedCounter';
     
-            // Initialize the shared counter in Redis to 0
+            // Redis에서 공유 카운터를 0으로 초기화합니다
             await redisClient.set(counterKey, 0);
     
-            // Mock operation to increment the counter
+            // 카운터를 증가시키기 위한 모의 작업
             const mockOperation = jest.fn(async () => {
-                // Get the current counter value
+                // 현재 카운터 값을 가져옵니다
                 const currentCount = await redisClient.get(counterKey);
                 const newCount = Number(currentCount) + 1;
     
-                // Set the incremented value back in Redis
+                // 증가된 값을 Redis에 다시 설정합니다
                 await redisClient.set(counterKey, newCount);
                 return newCount;
             });
             const results = await Promise.allSettled(Array.from({ length: 100 }, () => redisLockManager.withLockBySrc(resourceId, resourceType, mockOperation)));
             
-            // Count the number of successful operations
+            // 성공적인 작업의 수를 계산합니다
             const successfulCalls = results.filter(result => result.status === 'fulfilled').length;
-            console.log('Successful Calls:', successfulCalls);
+            console.log('성공적인 호출 수:', successfulCalls);
             expect(mockOperation).toHaveBeenCalledTimes(successfulCalls);
     
-            // Retrieve the final counter value from Redis and expect it to be equal to the number of successful calls
+            // Redis에서 최종 카운터 값을 가져오고 성공적인 호출 수와 같아야 합니다
             const finalCounterValue = await redisClient.get(counterKey);
-            console.log('Final Counter Value:', Number(finalCounterValue));
+            console.log('최종 카운터 값:', Number(finalCounterValue));
             expect(Number(finalCounterValue)).toBe(successfulCalls);
     
-            // Clean up the counter key in Redis
+            // Redis에서 카운터 키를 정리합니다
             await redisClient.del(counterKey);
         }, 30000);
-
-        // describe('withoutLock', () => {
-        //     it('should fail to increment the shared counter sequentially for 00 requests without lock', async () => {
-        //         const counterKey = 'sharedCounter';
-        
-        //         // Initialize the shared counter in Redis to 0
-        //         await redisClient.set(counterKey, 0);
-        
-        //         // Mock operation to increment the counter manually (simulate non-atomic operation)
-        //         const mockOperation = jest.fn(async () => {
-        //             // Get the current counter value
-        //             const currentCount = await redisClient.get(counterKey);
-        //             const newCount = Number(currentCount) + 1;
-        
-        //             // Set the incremented value back in Redis
-        //             await redisClient.set(counterKey, newCount);
-        //             return newCount;
-        //         });
-        
-        //         // Run the mock operation 00 times in parallel without a lock
-        //         await Promise.allSettled(Array.from({ length: 100 }, () => mockOperation()));
-        
-        //         // Expect the mock operation to be called 100 times
-        //         expect(mockOperation).toHaveBeenCalledTimes(100);
-        
-        //         // Retrieve the final counter value from Redis
-        //         const finalCounterValue = await redisClient.get(counterKey);
-        
-        //         // Expect the final counter value to NOT be 100, indicating race conditions without the lock
-        //         expect(Number(finalCounterValue)).not.toBe(100);
-        
-        //         // Clean up the counter key in Redis
-        //         await redisClient.del(counterKey);
-        //     }, 30000);
-        // });
-        
     });
 
 

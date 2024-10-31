@@ -27,7 +27,7 @@ describe('RedisLockManager', () => {
                 url: `redis://${redisHost}:${redisPort}`
             }
         )
-        .on('error', err => console.log('Redis Client Error', err))
+        .on('error', err => console.log('Redis 클라이언트 오류', err))
         .connect() as RedisClientType;
 
 
@@ -36,7 +36,7 @@ describe('RedisLockManager', () => {
                 RedisLockManager,
                 RedisRepository,
                 {
-                    provide: 'redisClient', // redisClient 주입 설정
+                    provide: 'REDIS_CLIENT', // redisClient 주입 설정
                     useValue: redisClient,
                 },
             ],
@@ -56,69 +56,69 @@ describe('RedisLockManager', () => {
       });
 
       describe('withLockBySrc', () => {
-        it('should acquire lock and increment a shared counter sequentially for 100 requests', async () => {
+        it('잠금을 획득하고 100개의 요청에 대해 공유 카운터를 순차적으로 증가시켜야 합니다', async () => {
             const resourceId = 'testResourceId';
             const resourceType = 'testResourceType';
             const counterKey = 'sharedCounter';
     
-            // Initialize the shared counter in Redis to 0
+            // Redis에서 공유 카운터를 0으로 초기화합니다
             await redisClient.set(counterKey, 0);
     
-            // Mock operation to increment the counter
+            // 카운터를 증가시키기 위한 모의 작업
             const mockOperation = jest.fn(async () => {
-                // Get the current counter value
+                // 현재 카운터 값을 가져옵니다
                 const currentCount = await redisClient.get(counterKey);
                 const newCount = Number(currentCount) + 1;
     
-                // Set the incremented value back in Redis
+                // 증가된 값을 Redis에 다시 설정합니다
                 await redisClient.set(counterKey, newCount);
                 return newCount;
             });
 
             await Promise.allSettled(Array.from({ length: 100 }, () => redisLockManager.withLockBySrc(resourceId, resourceType, mockOperation)));
     
-            // Expect the mock operation to be called 100 times
+            // 모의 작업이 100번 호출되었는지 확인합니다
             expect(mockOperation).toHaveBeenCalledTimes(100);
     
-            // Retrieve the final counter value from Redis and expect it to be 100
+            // Redis에서 최종 카운터 값을 가져오고 100이어야 합니다
             const finalCounterValue = await redisClient.get(counterKey);
             expect(Number(finalCounterValue)).toBe(100);
     
-            // Clean up the counter key in Redis
+            // Redis에서 카운터 키를 정리합니다
             await redisClient.del(counterKey);
         }, 30000);
 
         describe('withoutLock', () => {
-            it('should fail to increment the shared counter sequentially for 100 requests without lock', async () => {
+            it('잠금 없이 100개의 요청에 대해 공유 카운터를 순차적으로 증가시키는 데 실패해야 합니다', async () => {
                 const counterKey = 'sharedCounter';
         
-                // Initialize the shared counter in Redis to 0
+                // Redis에서 공유 카운터를 0으로 초기화합니다
                 await redisClient.set(counterKey, 0);
         
-                // Mock operation to increment the counter manually (simulate non-atomic operation)
+                // 수동으로 카운터를 증가시키기 위한 모의 작업 (비원자적 작업 시뮬레이션)
                 const mockOperation = jest.fn(async () => {
-                    // Get the current counter value
+                    // 현재 카운터 값을 가져옵니다
                     const currentCount = await redisClient.get(counterKey);
                     const newCount = Number(currentCount) + 1;
         
-                    // Set the incremented value back in Redis
+                    // 증가된 값을 Redis에 다시 설정합니다
                     await redisClient.set(counterKey, newCount);
                     return newCount;
                 });
         
-                // Run the mock operation 100 times in parallel without a lock
+                // 잠금 없이 100번 모의 작업을 병렬로 실행합니다
                 await Promise.allSettled(Array.from({ length: 100 }, () => mockOperation()));
         
-                // Expect the mock operation to be called 100 times
+                // 모의 작업이 100번 호출되었는지 확인합니다
                 expect(mockOperation).toHaveBeenCalledTimes(100);
         
-                // Retrieve the final counter value from Redis
+                // Redis에서 최종 카운터 값을 가져옵니다
                 const finalCounterValue = await redisClient.get(counterKey);
         
-                // Expect the final counter value to NOT be 100, indicating race conditions without the lock
+                // 최종 카운터 값이 100이 아니어야 하며, 이는 잠금 없이 경합 조건을 나타냅니다
                 expect(Number(finalCounterValue)).not.toBe(100);
         
-                // Clean up the counter key in Redis
+                // Redis에서 카운터 키를 정리합니다
                 await redisClient.del(counterKey);
             }, 30000);
         });
