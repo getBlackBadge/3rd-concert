@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Concert } from './concert.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 @Entity('Seats')
@@ -7,9 +6,6 @@ export class Seat {
   @PrimaryGeneratedColumn('uuid')
   id: string = uuid();
 
-  // @ManyToOne(() => Concert, concert => concert.id)
-  // @JoinColumn({ name: 'concert_id' })
-  // concert: Concert;
   @Column({ type: 'uuid' })
   concert_id: string; 
 
