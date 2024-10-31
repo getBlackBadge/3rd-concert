@@ -1,12 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { createClient, RedisClientType } from 'redis';
+import { createClient, RedisClientType, RedisModules, RedisFunctions, RedisScripts } from 'redis';
 import { IMemoryDB } from './redis.interface';
+
+type RedisClient = RedisClientType<RedisModules, RedisFunctions, RedisScripts>;
 
 @Injectable()
 export class RedisRepository implements IMemoryDB {
     private readonly defaultTTL = 30000; // 30 seconds
-
-    constructor(@Inject('redisClient') private readonly redisClient: RedisClientType) {
+    constructor(@Inject('REDIS_CLIENT') private readonly redisClient: RedisClient) {
         this.redisClient.setMaxListeners(200)
     }
 
