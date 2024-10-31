@@ -8,18 +8,40 @@ import { GenericContainer } from 'testcontainers';
 import { UserService } from '../../../domain/services/user.service';
 import { BalanceFacade } from '../balance.facade'; 
 import { BalanceService } from '../../../domain/services/balance.service';
+import { RedisLockManager } from '../../../common/managers/locks/redis-wait-lock.manager'
+import { RedisRepository } from '../../../infrastructure/redis/redis.repository'
+import { redisClient } from '../../../common/config/redis.config';
+import { createClient } from 'redis';
+import { RedisClientType } from 'redis';
 
-describe('QueueFacade', () => {
+describe('BalanceFacade', () => {
   let balanceFacade: BalanceFacade; // BalanceFacade 추가
   let dataSource: DataSource;
   let userRepository;
   let userService;
+  let redisClient;
+  let redisRepository;
 
   beforeAll(() => {
     jest.setTimeout(20000); // 전체 테스트 스위트에 대한 타임아웃을 20초로 설정
   });
 
   beforeEach(async () => {
+    const redisContainer = await new GenericContainer('redis')
+    .withExposedPorts(6379)
+    .start();
+
+    const redisHost = redisContainer.getHost();
+    const redisPort = redisContainer.getMappedPort(6379);
+
+    redisClient = await createClient(
+        {
+            url: `redis://${redisHost}:${redisPort}`
+        }
+    )
+    .on('error', err => console.log('Redis 클라이언트 오류', err))
+    .connect() as RedisClientType;
+    redisRepository = new RedisRepository(redisClient);
     // PostgreSQL 컨테이너 시작
     const container = await new GenericContainer('postgres')
       .withEnvironment({
@@ -67,6 +89,12 @@ describe('QueueFacade', () => {
           provide: DataSource,
           useValue: dataSource,
         },
+        {
+          provide: RedisLockManager,
+          useValue: new RedisLockManager(
+            redisRepository,
+          ),
+        },
         BalanceFacade,
         BalanceService
       ],
@@ -86,7 +114,7 @@ describe('QueueFacade', () => {
     }
   });
 
-  it('50포인트 충전 후 70번의 1포인트 사용 시 50번 성공하고 20번 실패해야 한다', async () => {
+  it('50포인트 충전 후 70번의 1포인트 사용 시 50번 성공하고 20번 실패해야 한다 {예상 결과 : 성공 50, 실패 20}', async () => {
     const userId = uuid();
     await userRepository.save({ id: userId, username: 'test_user', balance: 0 });
 
@@ -95,10 +123,7 @@ describe('QueueFacade', () => {
 
     // Step 2: 동시에 70번의 1포인트 사용 요청
     const usageRequests = Array.from({ length: 70 }, () =>
-      balanceFacade.decreaseBalance(userId, 1).then(
-        () => ({ success: true }),
-        (error) => ({ success: false, error })
-      )
+      balanceFacade.decreaseBalance(userId, 1)
     );
     // Step 3: 모든 사용 요청 완료 대기 중
     console.log('Step 3: 모든 사용 요청 완료 대기 중...');
