@@ -12,6 +12,7 @@ export class RedisLockManager implements ILockManager {
     private readonly defaultTTL = 30000; // 30 seconds
     private readonly maxRetries = 1000;
 
+
     constructor(private readonly redisRepository: RedisRepository) {}
     async withLockBySrc<T>(resourceId: string, resourceType: string, operation: () => Promise<T>): Promise<T> {
         const lockResourceId = `lock:${resourceType}:${resourceId}`;
@@ -19,7 +20,7 @@ export class RedisLockManager implements ILockManager {
         const queueKey = this.getQueueKey(lockResourceId);
         const requestId = this.generateUniqueRequestId();
         const channelKey = this.getChannelKey(lockResourceId, requestId);
-        
+        let operationResult
         
         try {
             await this.joinQueue(queueKey, requestId);
@@ -34,12 +35,12 @@ export class RedisLockManager implements ILockManager {
                 throw new Error('Failed to acquire lock');
             }
             
-            const result = await operation();
+            operationResult = await operation();
             console.log(`Operation completed for resource: ${lockResourceId}, requestId: ${requestId}`);
-            return result;
+            return operationResult;
         } catch (error) {
             console.log(`Error in withLock for resource: ${lockResourceId}, requestId: ${requestId}`, error.message);
-            throw error;
+            throw error
         } finally {
             await this.releaseLock(lockKey, requestId);
             console.log(`Lock released for resource: ${lockResourceId}, requestId: ${requestId}`);
@@ -48,14 +49,22 @@ export class RedisLockManager implements ILockManager {
             console.log(`Left queue for resource: ${lockResourceId}, requestId: ${requestId}`);
 
             const nextId = await this.getNextReqId(queueKey)
-            if (!nextId) {
-                return
+            
+            // 재미있던 사건: 여기에 early exit을 한다면 한가지 문제가 발생한다.
+            // if (!nextId) {
+            // return operationResult
+            // }
+            // 에러 케이스에서 finally에서 그냥 리턴을 준다면
+            // 프로미스 객체의 reject이 더 이상 전파되지 않는다.
+            // 좀 더 연구해보면 재미있을 거 같다.
+
+            if (nextId) {
+                const  nextChannelKey = this.getChannelKey(lockResourceId, nextId);
+                await this.notifyNext(nextChannelKey);
+                console.log(`Notified next in queue for resource: ${lockResourceId}, next: ${nextId}`);
             }
 
-            const  nextChannelKey = this.getChannelKey(lockResourceId, nextId);
             
-            await this.notifyNext(nextChannelKey);
-            console.log(`Notified next in queue for resource: ${lockResourceId}, next: ${nextId}`);
         }
     }
 
