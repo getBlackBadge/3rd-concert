@@ -25,7 +25,7 @@ export class Seat {
   @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'integer', default: 5000 })
   price: number;
 
 }
