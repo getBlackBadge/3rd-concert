@@ -1,25 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from './user.entity';
-import { Concert } from './concert.entity';
-import { Seat } from './seat.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 @Entity('Reservations')
 export class Reservation {
   @PrimaryGeneratedColumn('uuid')
   id: string = uuid();
-
-  // @ManyToOne(() => User, user => user.id)
-  // @JoinColumn({ name: 'user_id' })
-  // user: User;
-
-  // @ManyToOne(() => Concert, concert => concert.id)
-  // @JoinColumn({ name: 'concert_id' })
-  // concert: Concert;
-  
-  // @ManyToOne(() => Seat, seat => seat.id)
-  // @JoinColumn({ name: 'seat_id' })
-  // seat: Seat;
 
   @Column({ type: 'uuid' })
   user_id: string; 
@@ -50,4 +35,5 @@ export class Reservation {
 
   @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
+
 }

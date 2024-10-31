@@ -9,6 +9,7 @@ import { ConcertService } from '../../domain/services/concert.service';
 import { UserService } from '../../domain/services/user.service';
 import { Concert } from '../../domain/entities/concert.entity';
 import { Queue } from '../../domain/entities/queue.entity';
+
 @Injectable()
 export class QueueFacade {
   constructor(
