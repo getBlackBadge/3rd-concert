@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateTokenDto } from '../../presentation/dto/create-token.dto';
+import { CreateTokenReqDto } from '../../presentation/dto/create-token.dto';
 import { QueueStatusResDto, QueueStatusRequestDto } from '../../presentation/dto/queue-status.dto';
 import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,6 +10,7 @@ import { UserService } from '../../domain/services/user.service';
 import { Concert } from '../../domain/entities/concert.entity';
 import { Queue } from '../../domain/entities/queue.entity';
 import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
+import { QueueStatusEnum } from '../../common/enums/queue-status.enum';
 @Injectable()
 export class QueueFacade {
   constructor(
@@ -26,7 +27,7 @@ export class QueueFacade {
     private redisLockManager: RedisLockManager
   ) {}
 
-  async createToken(createTokenDto: CreateTokenDto): Promise<string> {
+  async createToken(createTokenDto: CreateTokenReqDto): Promise<string> {
       const { userId, concertId } = createTokenDto;
       const concert = await this.concertService.getConcertById(concertId);
 
@@ -82,13 +83,13 @@ export class QueueFacade {
   
     // get queueLength
     const queueLength = await this.queueService.getQueueLenByConcertId(concertId)
-    let status = "notAvailable"
+    let status = QueueStatusEnum.NOTAVAILABLE
     let token = getQueueStatusDto.token
 
     if (concert.max_queue > queuePosition){
-      status = "available"
+      status = QueueStatusEnum.AVAILABLE
       //유효시간 5분 승인된 새 토큰 발급 
-      token = await this.jwtService.generateToken({...decodedToken, status:"approved"}, "10m")
+      token = await this.jwtService.generateToken({...decodedToken, status:QueueStatusEnum.APPROVED}, "10m")
     }
 
     return {

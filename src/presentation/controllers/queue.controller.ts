@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, Param, HttpStatus, HttpException, UsePipes, ValidationPipe } from '@nestjs/common';
 import { QueueFacade } from '../../application/facades/queue.facade';
-import { CreateTokenDto } from '../dto/create-token.dto';
+import { CreateTokenReqDto, CreateTokenResDto } from '../dto/create-token.dto';
 import { QueueStatusResDto, QueueStatusRequestDto } from '../dto/queue-status.dto';
 
 @Controller('queue')
@@ -14,10 +14,10 @@ export class QueueController {
    */
   @Post('token')
   @UsePipes(new ValidationPipe())
-  async createToken(@Body() createTokenDto: CreateTokenDto) {
+  async createToken(@Body() createTokenDto: CreateTokenReqDto): Promise<CreateTokenResDto> {
     try {
       const token = await this.queueFacade.createToken(createTokenDto);
-      return { token };
+      return new CreateTokenResDto(token);
     } catch (error) {
       throw new HttpException('토큰 생성에 실패했습니다.', HttpStatus.BAD_REQUEST);
     }
@@ -30,10 +30,10 @@ export class QueueController {
    */
   @Post('status')
   @UsePipes(new ValidationPipe())
-  async getQueueStatus(@Body() queueStatusRequestDto: QueueStatusRequestDto) {
+  async getQueueStatus(@Body() queueStatusRequestDto: QueueStatusRequestDto): Promise<QueueStatusResDto>{
     try {
-      const queueStatus: QueueStatusResDto = await this.queueFacade.getQueueStatus(queueStatusRequestDto);
-      return queueStatus;
+      const { token, userId, concertId, position, queueLength, status } = await this.queueFacade.getQueueStatus(queueStatusRequestDto);
+      return new QueueStatusResDto(token, userId, concertId, position, queueLength, status);
     } catch (error) {
       throw new HttpException('대기열 상태 조회에 실패했습니다.', HttpStatus.BAD_REQUEST);
     }

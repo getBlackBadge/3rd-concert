@@ -15,8 +15,8 @@ export class ReservationController {
   @Post()
   @UsePipes(ValidationPipe)
   async reserveSeat(@Body() reservationDto: ReservationReqDto): Promise<ReservationResDto> {
-    const result = await this.reservationFacade.reserveSeat(reservationDto);
-    return result;
+    const {message, reservationId} = await this.reservationFacade.reserveSeat(reservationDto);
+    return new ReservationResDto(message, reservationId)
   }
 
   /**
@@ -28,6 +28,7 @@ export class ReservationController {
   @UsePipes(ValidationPipe)
   // concert는 따로 명시된 게 없으므로 1개만 있다고 가정하고 date를 기준을 쿼리를 날립니다
   async getAvailableSeats(@Param('date') date: string): Promise<AvailableSeatsResDto>  {
-    return await this.reservationFacade.getAvailableSeats(date);
+    const {concertId, availableSeats}= await this.reservationFacade.getAvailableSeats(date);
+    return new AvailableSeatsResDto(date, concertId, availableSeats)
   }
 }

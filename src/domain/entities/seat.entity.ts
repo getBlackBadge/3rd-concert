@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, } from 'typeorm';
 import { v4 as uuid } from 'uuid';
-
+import { SeatStatusEnum } from '../../common/enums/seat-status.enum';
 @Entity('Seats')
 export class Seat {
   @PrimaryGeneratedColumn('uuid')
@@ -12,7 +12,7 @@ export class Seat {
   @Column({ type: 'int' })
   seat_number: number;
 
-  @Column({ type: 'varchar', length: 20, default: 'available' })
+  @Column({ type: 'varchar', length: 20, default: SeatStatusEnum.AVAILABLE })
   status: string; // available, reserved_temp, reserved_final
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

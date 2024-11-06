@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Reservation } from '../entities/reservation.entity';
 
 import { SeatServiceInterface } from './interfaces/seat.service.interface';
+import { SeatStatusEnum } from '../../common/enums/seat-status.enum';
 
 @Injectable()
 export class SeatService implements SeatServiceInterface {
@@ -39,7 +40,7 @@ export class SeatService implements SeatServiceInterface {
   }
 
   async checkSeatStatue(seat: Seat): Promise<boolean> {
-    if (seat.status !== 'available') {
+    if (seat.status !== SeatStatusEnum.AVAILABLE) {
       throw new BadRequestException('이미 예약된 좌석입니다.');
     }
     return true
@@ -63,13 +64,13 @@ export class SeatService implements SeatServiceInterface {
     const existingSeat = await this.seatRepository.findOne({
       where: { seat_number: seatNumber, concert_id: concertId }
     });
-    if (existingSeat && existingSeat.status !== 'available') {
+    if (existingSeat && existingSeat.status !== SeatStatusEnum.AVAILABLE) {
       throw new BadRequestException('이미 예약된 좌석입니다.');
     }
     return true
   }
 
-  async getOrCreateSeat(seatNumber: number, concertId: string, status: string = 'available'): Promise<Seat> {
+  async getOrCreateSeat(seatNumber: number, concertId: string, status: string = SeatStatusEnum.AVAILABLE): Promise<Seat> {
     let seat = await this.seatRepository.findOne({
       where: { seat_number: seatNumber, concert_id: concertId }
     });
@@ -106,11 +107,11 @@ export class SeatService implements SeatServiceInterface {
       const existingSeat = seats.find(seat => seat.seat_number === seatNumber);
       return {
         seat_number: seatNumber,
-        status: existingSeat ? existingSeat.status : 'available',
+        status: existingSeat ? existingSeat.status : SeatStatusEnum.AVAILABLE,
         updated_at: existingSeat ? existingSeat.updated_at : new Date()
       };
     })
-    .filter(seat => seat.status === 'available');
+    .filter(seat => seat.status === SeatStatusEnum.AVAILABLE);
     return availableSeats
   }
 }

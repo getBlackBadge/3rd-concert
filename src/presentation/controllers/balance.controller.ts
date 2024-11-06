@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, UsePipes, ValidationPipe, ParseUUIDPipe } from '@nestjs/common';
 // import { BalanceService } from '../../domain/services/deprecated/balance.service';
-import { BalanceDto } from '../dto/balance.dto';
+import { BalanceReqDto, ChargeBalanceResDto, GetBalanceResDto } from '../dto/balance.dto';
 import { BalanceFacade } from '../../application/facades/balance.facade'
 
 @Controller('balance')
@@ -16,10 +16,10 @@ export class BalanceController {
   @Post('charge')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async chargeBalance(
-    @Body() balanceDto: BalanceDto,
+    @Body() balanceDto: BalanceReqDto,
   ): Promise<{ message: string }> {
     await this.balanceFacade.chargeBalance(balanceDto.userId, balanceDto.amount);
-    return { message: 'Balance charged successfully.' };
+    return new ChargeBalanceResDto('Balance가 성공적으로 충전되었습니다')
   }
 
   /**
@@ -31,6 +31,6 @@ export class BalanceController {
   @UsePipes(new ValidationPipe({ transform: true }))
   async getBalance(@Param('userId', ParseUUIDPipe) userId: string): Promise<{ balance: number }> {
     const balance = await this.balanceFacade.getBalance(userId);
-    return { balance };
+    return new GetBalanceResDto(balance)
   }
 }

@@ -9,7 +9,8 @@ import { Seat } from '../../domain/entities/seat.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '../../common/jwt/jwt.service';
 import { RedisNoWaitLockManager } from '../../common/managers/locks/redis-nowait-lock.manager';
-
+import { SeatStatusEnum } from '../../common/enums/seat-status.enum';
+import { QueueStatusEnum } from '../../common/enums/queue-status.enum';
 @Injectable()
 export class ReservationFacade {
   constructor(
@@ -36,7 +37,7 @@ export class ReservationFacade {
 
     // token 검사
     const decodedToken = await this.jwtService.verifyToken(token)
-    if (decodedToken.status !== "approved") {
+    if (decodedToken.status !== QueueStatusEnum.APPROVED) {
       throw new BadRequestException("토큰이 유효하지 않습니다")
     }
 
@@ -66,7 +67,7 @@ export class ReservationFacade {
         this.seatService.checkSeatStatue(seat)
 
         const reservation = await this.reservationService.createReservation(userId, seat.id, concertId, seat.price, reservationRepository)
-        await this.seatService.updateSeatStatus(seat.id, "reserved_temp")
+        await this.seatService.updateSeatStatus(seat.id, SeatStatusEnum.RESERVEDTEMP)
         
         // 예약 만료 처리를 위한 스케줄링
         this.reservationService.scheduleReservationExpiration(reservation.id, reservation.payment_deadline)
