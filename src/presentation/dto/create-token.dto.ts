@@ -1,7 +1,7 @@
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { IsDate, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CreateTokenDto {
+export class CreateTokenReqDto {
   /**
    * 유저 ID
    * 대기열 토큰을 발급받을 유저의 고유 식별자입니다.
@@ -21,4 +21,15 @@ export class CreateTokenDto {
   @IsUUID()
   @IsNotEmpty({ message: '콘서트 ID는 필수입니다.' })
   concertId: string;
+}
+
+
+export class CreateTokenResDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  constructor( token: string ) {
+    this.token = token;
+  }
 }

@@ -6,6 +6,8 @@ import { Seat } from '../entities/seat.entity';
 import { ReservationServiceInterface } from './interfaces/reservation.service.interface';
 import { CronJob } from 'cron';
 import { SchedulerService } from '../../infrastructure/scheduler/scheduler.service';
+import { SeatStatusEnum } from '../../common/enums/seat-status.enum';
+import { ReservationStatusEnum } from '../../common/enums/reservation-status.enum';
 
 @Injectable()
 export class ReservationService implements ReservationServiceInterface{
@@ -25,7 +27,7 @@ export class ReservationService implements ReservationServiceInterface{
   }
   async checkReservationAvailability(reservationId: string): Promise<boolean> {
     const reservation = await this.getReservationById(reservationId)
-    if (reservation.status === "expired"){
+    if (reservation.status === ReservationStatusEnum.EXPIRED){
       throw new Error('해당 예약은 만료되었습니다');
     }
     if (reservation.payment_deadline < new Date()) {
@@ -50,7 +52,7 @@ export class ReservationService implements ReservationServiceInterface{
         user_id: userId,
         seat_id: seatId,
         concert_id: concertId,
-        status: 'pending',
+        status: ReservationStatusEnum.PENDING,
         amount: price, // 좌석의 가격 사용
         payment_deadline: new Date(Date.now() + 5 * 60 * 1000), // 현재 시간으로부터 5분 후
         reserved_at: currentDate, // 예약 시간 추가
@@ -106,7 +108,7 @@ export class ReservationService implements ReservationServiceInterface{
       .then(reservation => {
         if (reservation) {
           // 예약 상태를 'expired'로 변경
-          reservation.status = 'expired';
+          reservation.status = ReservationStatusEnum.EXPIRED;
           return this.reservationRepository.save(reservation).then(() => reservation); // reservation을 반환
         }
       })
@@ -115,7 +117,7 @@ export class ReservationService implements ReservationServiceInterface{
           // Update the seat status to 'available' where the reservation ID matches
           return this.seatRepository.update(
             { id: reservation.seat_id }, // 좌석 ID를 사용하여 업데이트
-            { status: 'available' }
+            { status: SeatStatusEnum.AVAILABLE }
           );
         }
       })

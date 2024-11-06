@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { BalanceService } from '../../domain/services/balance.service';
 import { ReservationService } from '../../domain/services/reservation.service';
 import { SeatService } from '../../domain/services/seat.service';
-import { PaymentDto } from '../../presentation/dto/payment.dto'
+import { PaymentReqDto } from '../../presentation/dto/payment.dto'
 import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
+import { ReservationStatusEnum } from '../../common/enums/reservation-status.enum';
+import { PaymentStatusEnum } from '../../common/enums/payment-status.enum';
 
 @Injectable()
 export class PaymentFacade {
@@ -22,7 +24,7 @@ export class PaymentFacade {
    * @returns 결제 성공 여부와 결제 정보
    * @throws BadRequestException - 결제 실패 시 예외 발생
    */
-  async processPayment(paymentDto: PaymentDto) {
+  async processPayment(paymentDto: PaymentReqDto) {
     const reservationId = paymentDto.reservationId 
     const userId = paymentDto.userId
 
@@ -36,7 +38,7 @@ export class PaymentFacade {
     })
     await this.reservationService.updateReservation(reservationId, 
       {
-        "status": "completed",
+        "status": ReservationStatusEnum.COMPLETED,
         "completed_at": new Date(),
       }
     )
@@ -47,7 +49,7 @@ export class PaymentFacade {
       reservationId,
       seatId: reservation.seat_id,
       amount: reservation.amount,
-      status: 'success',
+      status: PaymentStatusEnum.SUCCESS,
       message: '결제가 성공적으로 처리되었습니다.',
     };
 }

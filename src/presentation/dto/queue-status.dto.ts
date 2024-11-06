@@ -55,4 +55,20 @@ export class QueueStatusResDto {
   })
   @IsString()
   status: string;
+
+  constructor(
+    token: string,
+    userId: string,
+    concertId: string,
+    position: number,
+    queueLength: number,
+    status: string
+  ) {
+    this.token = token;
+    this.userId = userId;
+    this.concertId = concertId;
+    this.position = position;
+    this.queueLength = queueLength;
+    this.status = status;
+  }
 }

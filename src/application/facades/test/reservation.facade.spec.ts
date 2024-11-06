@@ -23,6 +23,7 @@ import { Seat } from '../../../domain/entities/seat.entity';
 import { SchedulerService } from '../../../infrastructure/scheduler/scheduler.service';
 import { createClient } from 'redis';
 import { RedisClientType } from 'redis';
+import { QueueStatusEnum } from '../../../common/enums/queue-status.enum';
 
 describe('ReservationFacade', () => {
   let facade: ReservationFacade;
@@ -170,7 +171,7 @@ describe('ReservationFacade', () => {
     }));
 
     // 필요한 서비스 메서드를 Mock 처리
-    jest.spyOn(jwtService, 'verifyToken').mockResolvedValue({ status: 'approved' });
+    jest.spyOn(jwtService, 'verifyToken').mockResolvedValue({ status: QueueStatusEnum.APPROVED });
     jest.spyOn(concertService, 'verifyConcert').mockResolvedValue(true);
 
 

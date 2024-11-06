@@ -7,8 +7,12 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ReservationResDto {
   message: string;
   reservationId: string;
-}
 
+  constructor(message: string, reservationId: string) {
+    this.message = message;
+    this.reservationId = reservationId;
+  }
+}
 
 export class ReservationReqDto {
   @ApiProperty({ 
@@ -86,4 +90,10 @@ export class AvailableSeatsResDto {
     status: string;
     updated_at: Date;
   }[];
+
+  constructor(date: string, concertId: string, availableSeats: { seat_number: number; status: string; updated_at: Date; }[]) {
+    this.date = date;
+    this.concertId = concertId;
+    this.availableSeats = availableSeats;
+  }
 }

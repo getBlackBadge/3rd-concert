@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
 import { PaymentFacade } from '../../application/facades/payment.facade';
-import { PaymentDto } from '../dto/payment.dto';
+import { PaymentReqDto, PaymentResDto } from '../dto/payment.dto';
 
 @Controller('payment')
 export class PaymentController {
@@ -15,11 +15,16 @@ export class PaymentController {
   @Post()
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ValidationPipe())
-  async processPayment(@Body() paymentDto: PaymentDto) {
-    const paymentResult = await this.paymentFacade.processPayment(paymentDto);
-    return {
-      message: '결제가 성공적으로 처리되었습니다.',
-      data: paymentResult,
-    };
-  }
+  async processPayment(@Body() paymentDto: PaymentReqDto) {
+    const {userId, reservationId, seatId, amount, status} = await this.paymentFacade.processPayment(paymentDto);
+    
+    return new PaymentResDto(
+      '결제가 성공적으로 처리되었습니다.',
+      userId,
+      reservationId,
+      seatId,
+      amount,
+      status
+    );
+  };
 }

@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsNumber, IsUUID, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class BalanceDto {
+export class BalanceReqDto {
   /**
    * 사용자 식별자 (UUID 형식)
    */
@@ -24,4 +24,28 @@ export class BalanceDto {
   @IsNumber()
   @Min(1, { message: '충전 금액은 1 이상이어야 합니다.' })
   amount: number;
+}
+
+export class ChargeBalanceResDto {
+  @ApiProperty({
+    description: '충전 결과 메시지',
+    example: 'Balance가 성공적으로 충전되었습니다.',
+  })
+  message: string;
+
+  constructor(message: string) {
+    this.message = message;
+  }
+}
+
+export class GetBalanceResDto {
+  @ApiProperty({
+    description: '현재 잔액',
+    example: 15000,
+  })
+  balance: number;
+
+  constructor(balance: number) {
+    this.balance = balance;
+  }
 }
