@@ -1,95 +1,81 @@
 import { Injectable } from '@nestjs/common';
 import { CreateTokenReqDto } from '../../presentation/dto/create-token.dto';
 import { QueueStatusResDto, QueueStatusRequestDto } from '../../presentation/dto/queue-status.dto';
-import { DataSource, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '../../common/jwt/jwt.service';
-import { QueueService } from '../../domain/services/queue.service';
 import { ConcertService } from '../../domain/services/concert.service';
 import { UserService } from '../../domain/services/user.service';
-import { Concert } from '../../domain/entities/concert.entity';
-import { Queue } from '../../domain/entities/queue.entity';
-import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
+import { QueueService } from '../../domain/services/queue.service';
 import { QueueStatusEnum } from '../../common/enums/queue-status.enum';
+import { RedisRepository } from '../../infrastructure/redis/redis.repository';
+
 @Injectable()
 export class QueueFacade {
   constructor(
-    @InjectRepository(Concert)
-    private concertRepository: Repository<Concert>,
-    @InjectRepository(Queue)
-    private queueRepository: Repository<Queue>,
 
-    private readonly queueService: QueueService,
     private readonly concertService: ConcertService,
     private readonly userService: UserService,
-    private readonly dataSource: DataSource,
+    private readonly queueService: QueueService,
     private jwtService: JwtService,
-    private redisLockManager: RedisLockManager
+    private readonly redisRepository: RedisRepository
   ) {}
 
   async createToken(createTokenDto: CreateTokenReqDto): Promise<string> {
-      const { userId, concertId } = createTokenDto;
-      const concert = await this.concertService.getConcertById(concertId);
+    const { userId, concertId } = createTokenDto;
+    // 환경변수로 설정된 값을 가져오고, 기본값을 설정
+    const cycle = parseInt(process.env.CYCLE_DURATION_MS || '10000', 10); // 기본값: 10초(10,000ms)
+    const maxPerCycle = parseInt(process.env.MAX_PER_CYCLE || '300', 10);  // 기본값: 300명
+    
+    const concert = await this.concertService.getConcertById(concertId);
 
+    const qCount = await this.redisRepository.incr(`queue:${concertId}:counter`);
 
-      return await this.redisLockManager.withLockBySrc(concertId, "concert", async () => {
+    
+    const reservationStartTime = concert.reservation_start_time
+    const now = new Date();
 
-        return await this.dataSource.transaction(async (transactionalEntityManager) => {
-          console.log(`concert ID ${concertId}에 대한 락 획득. userId : ${userId}`);
-      
-          let concertRepository = transactionalEntityManager.withRepository(this.concertRepository);
-          let queueRepository = transactionalEntityManager.withRepository(this.queueRepository);
-          const concert = await concertRepository.findOne({
-            where: { id: concertId },
-          });
-  
-  
-          const queueCount = await this.queueService.getQueueCountByConcertId(concertId, concertRepository)
-  
-          const newQCount = queueCount + 1 
-          // JWT 토큰 생성
-          const tokenPayload = {
-            userId: createTokenDto.userId,
-            concertId: createTokenDto.concertId,
-            queuePosition: queueCount + 1,
-          };
-          const token = this.jwtService.generateToken(tokenPayload);
-          // console.log('새로운 대기열 엔트리 생성');
-          await this.queueService.createQueue(userId, concertId, newQCount, token, queueRepository)
-          console.log(`concert queue_count 1 증가 queueCount: ${queueCount + 1}`);
-          await this.queueService.updateQueueCount(concertId, newQCount, concertRepository)
-          if (!token) {
-            throw new Error('Token generation failed');
-          }
-          return token;
-        }
-        )
-      } ) 
+    // activeAt 시간 계산 (현재 요청이 몇 번째 사이클에 속하는지 결정)
+    const activeAt = this.queueService.calculateWaitTime(cycle, maxPerCycle, qCount, reservationStartTime)
+
+    const expireStartTime = activeAt > now ? activeAt : now; 
+    const expiresAt = new Date(expireStartTime.getTime() + 5 * 60 * 1000); // activeAt에서 5분 후
+
+    // JWT 토큰 생성
+    const tokenPayload = {
+      userId: userId,
+      concertId: concertId,
+      queuePosition: qCount,
+      activeAt: activeAt.toISOString(),
+      exp: Math.floor(expiresAt.getTime() / 1000),
+      status: QueueStatusEnum.NOTAVAILABLE
+    };
+
+    const token = this.jwtService.generateToken(tokenPayload, "10m");
+
+    if (!token) {
+      throw new Error('Token generation failed');
     }
-      
+    return token;
+  }
 
   async getQueueStatus(getQueueStatusDto: QueueStatusRequestDto): Promise<QueueStatusResDto> {
+    const now = new Date();
     // JWT 토큰 검증 및 디코딩
     const decodedToken = await this.jwtService.verifyToken(getQueueStatusDto.token);
     
     // 토큰에서 필요한 정보 추출
-    const { userId, concertId, queuePosition } = decodedToken;
+    const { userId, concertId, queuePosition, activeAt } = decodedToken;
   
-    // get user by queue
-    const user = await this.userService.getUserByQueueId(userId)
-    
-    // get concert by queue
-    const concert = await this.concertService.getConcertByQueueId('queueId')
-  
-    // get queueLength
-    const queueLength = await this.queueService.getQueueLenByConcertId(concertId)
+    // user와 concert가 존재하는지 확인
+    await this.userService.getUserById(userId)
+    await this.concertService.getConcertById(concertId)
+ 
     let status = QueueStatusEnum.NOTAVAILABLE
     let token = getQueueStatusDto.token
 
-    if (concert.max_queue > queuePosition){
+    if (now > new Date(activeAt)){
       status = QueueStatusEnum.AVAILABLE
       //유효시간 5분 승인된 새 토큰 발급 
-      token = await this.jwtService.generateToken({...decodedToken, status:QueueStatusEnum.APPROVED}, "10m")
+      token = await this.jwtService.generateToken({...decodedToken, status}, "5m")
     }
 
     return {
@@ -97,8 +83,7 @@ export class QueueFacade {
       concertId,
       token: getQueueStatusDto.token,
       position: queuePosition,
-      queueLength,
-      status:status,
+      status,
     };
   }
 }
