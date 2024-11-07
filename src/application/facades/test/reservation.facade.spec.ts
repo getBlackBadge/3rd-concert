@@ -18,7 +18,6 @@ import { UserService } from '../../../domain/services/user.service';
 import { RedisLockManager } from '../../../common/managers/locks/redis-wait-lock.manager'
 import { RedisRepository } from '../../../infrastructure/redis/redis.repository'
 import { redisClient } from '../../../common/config/redis.config';
-import { Queue } from '../../../domain/entities/queue.entity';
 import { Seat } from '../../../domain/entities/seat.entity';
 import { SchedulerService } from '../../../infrastructure/scheduler/scheduler.service';
 import { createClient } from 'redis';
@@ -88,7 +87,7 @@ describe('ReservationFacade', () => {
       username: 'postgres',
       password: 'password',
       database: 'concert_service_db',
-      entities: [Seat, User, Reservation, Concert, Queue],
+      entities: [Seat, User, Reservation, Concert],
       synchronize: true,
       extra: {
         max: 10, // 최대 커넥션 수를 10으로 설정
@@ -117,10 +116,6 @@ describe('ReservationFacade', () => {
         {
           provide: getRepositoryToken(Concert),
           useValue: dataSource.getRepository(Concert),
-        },
-        {
-          provide: getRepositoryToken(Queue),
-          useValue: dataSource.getRepository(Queue),
         },
         {
           provide: DataSource,

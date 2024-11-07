@@ -42,12 +42,6 @@ export class QueueStatusResDto {
     example: 42
   })
   position: number;
-  
-  @ApiProperty({ 
-    description: '전체 대기열 길이',
-    example: 1000
-  })
-  queueLength: number;
 
   @ApiProperty({ 
     description: '상태',
@@ -61,14 +55,12 @@ export class QueueStatusResDto {
     userId: string,
     concertId: string,
     position: number,
-    queueLength: number,
     status: string
   ) {
     this.token = token;
     this.userId = userId;
     this.concertId = concertId;
     this.position = position;
-    this.queueLength = queueLength;
     this.status = status;
   }
 }

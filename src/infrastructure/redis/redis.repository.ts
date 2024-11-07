@@ -20,14 +20,6 @@ export class RedisRepository implements IMemoryDB {
         return true;
     }
 
-    // on(channelKey: string, callback: (channel: string, message: string) => void): void {
-    //     this.redisClient.on('message', (channel, message) => {
-    //         if (channel === channelKey) {
-    //             callback(channel, message);
-    //         }
-    //     });
-    // }
-
     async get(key: string): Promise<string | null> {
         return this.redisClient.get(key);
     }
@@ -102,12 +94,8 @@ export class RedisRepository implements IMemoryDB {
         return this.redisClient.zScore(key, value);
     }
 
-    // public async createSubscriber(channel: string): Promise<RedisClientType> {
-    //     const subscriber = createClient();
-    //     await subscriber.connect();
-    //     await subscriber.subscribe(channel, (message) => {
-    //         console.log(`Received message on channel ${channel}: ${message}`);
-    //     });
-    //     return subscriber as unknown as RedisClientType;
-    // }
+    async incr(key: string): Promise<number> {
+        return this.redisClient.incr(key);
+    }
+    
 }

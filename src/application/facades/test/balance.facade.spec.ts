@@ -1,7 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { TestingModule, Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Queue } from '../../../domain/entities/queue.entity';
 import { User } from '../../../domain/entities/user.entity';
 import { DataSource } from 'typeorm';
 import { GenericContainer } from 'testcontainers';
@@ -82,7 +81,6 @@ describe('BalanceFacade', () => {
           provide: UserService,
           useValue: new UserService(
             dataSource.getRepository(User),
-            dataSource.getRepository(Queue),
           ),
         },
         {
