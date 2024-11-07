@@ -25,7 +25,18 @@ npm run test src/application/facades/test/queue.facade.spec.ts
 ## 검증 4
 - /queue/status 로 요청이 왔을 때 activeAt시간이 도래했다면 응답의 token status는 DISAVAILABLE로 되어있어야합니다
 
-
-## 캐싱전략:
+# 분산락:
+- Redis 분산락은 저번주에 이미 구현이 되어있어서 이번 PR에는 포함되어있지않습니다. 
+참고용 관련 경로
+```bash
+src/common/managers/locks/redis-wait-lock.manager.ts  
+```
+```bash
+src/application/facades/balance.facade.ts 
+```
+```bash
+docs/step11.md
+```
+# 캐싱전략:
 제 서비스에서 콘서트는 1가지 종류로 고정되어있습니다... 날짜만 다르기 때문에 /GET concert가 없습니다. 따라서 캐싱히트를 높이는데 어려움이 있다고 판단하여 캐싱전략 대신에 대기열 개선에 집중했습니다...
 
