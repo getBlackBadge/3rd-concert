@@ -25,9 +25,8 @@ export class Concert {
   @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
 
-  @Column({ type: 'int', default: 100 })
-  max_queue: number;
-
-  @Column({ type: 'int', default: 0 })
-  queue_count: number;
+  @Column({
+    type: 'timestamp',
+  })
+  reservation_start_time: Date;
 }
