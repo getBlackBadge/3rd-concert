@@ -32,8 +32,8 @@ export class QueueController {
   @UsePipes(new ValidationPipe())
   async getQueueStatus(@Body() queueStatusRequestDto: QueueStatusRequestDto): Promise<QueueStatusResDto>{
     try {
-      const { token, userId, concertId, position, queueLength, status } = await this.queueFacade.getQueueStatus(queueStatusRequestDto);
-      return new QueueStatusResDto(token, userId, concertId, position, queueLength, status);
+      const { token, userId, concertId, position, status } = await this.queueFacade.getQueueStatus(queueStatusRequestDto);
+      return new QueueStatusResDto(token, userId, concertId, position, status);
     } catch (error) {
       throw new HttpException('대기열 상태 조회에 실패했습니다.', HttpStatus.BAD_REQUEST);
     }
