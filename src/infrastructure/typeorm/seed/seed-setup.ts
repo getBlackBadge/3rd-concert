@@ -1,4 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
+import { v7 as uuidv7 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 export class Seed1729080559632 implements MigrationInterface {
 
@@ -56,34 +58,47 @@ export class Seed1729080559632 implements MigrationInterface {
                 "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
             );
         `);
-
+  
         const concertName = 'MainConcert';
         const venue = 'Main Hall';
-
+        const maxEntries = 30;
         let currentDate = new Date('2024-11-01');
-        const twoWeeksLater = new Date('2024-11-30');
-
-        while (currentDate <= twoWeeksLater) {
-            // currentDate에 하루를 더한 후, 19시를 설정
-            const reservationStartTime = new Date(currentDate);
-            reservationStartTime.setDate(reservationStartTime.getDate() + 1); // 1일 더하기
-            reservationStartTime.setHours(19, 0, 0, 0); // 19:00:00으로 설정
         
-            // 예약 시작 시간 값을 ISO 문자열로 변환
+        for (let i = 0; i < maxEntries; i++) {
+            const concertDateISO = currentDate.toISOString().split('T')[0];
+        
+            // Set reservation start time to 19:00:00 on the current concert date
+            const reservationStartTime = new Date(currentDate);
+            reservationStartTime.setHours(19, 0, 0, 0);
             const reservationStartTimeISO = reservationStartTime.toISOString();
+            const concertId = uuidv7(); // Generate a UUID v7
+            // const concertId = uuidv4(); // Generate a UUID v4
         
             await queryRunner.query(`
-                INSERT INTO "Concerts" ("name", "venue", "concert_date", "max_seats", "created_at", "updated_at", "reservation_start_time")
-                VALUES ('${concertName}', '${venue}', '${currentDate.toISOString().split('T')[0]}', 50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '${reservationStartTimeISO}');
+                INSERT INTO "Concerts" ("id", "name", "venue", "concert_date", "max_seats", "created_at", "updated_at", "reservation_start_time")
+                VALUES ('${concertId}', '${concertName}', '${venue}', '${concertDateISO}', 50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '${reservationStartTimeISO}');
             `);
+
+            for (let i = 1; i < 51; i ++){
+                await queryRunner.query(`
+                    INSERT INTO "Seats" ("concert_id", "seat_number", "status", "created_at", "updated_at", "price")
+                    VALUES ('${concertId}', ${i}, 'available', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 500);
+                `);
+            }
+
             
-            console.log(`Concert inserted for date: ${currentDate.toISOString().split('T')[0]} with reservation start time: ${reservationStartTimeISO}`);
+        
+        
+            // console.log(`Concert inserted for date: ${concertDateISO} with reservation start time: ${reservationStartTimeISO}`);
             
+            // Move to the next day
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
+
         const concertCount = await queryRunner.manager.query('SELECT COUNT(*) FROM "Concerts"');
         console.log(`Total concerts inserted: ${concertCount[0].count}`);
+        await queryRunner.manager.query('CREATE INDEX idx_concert_id_seat_number ON "Seats" (concert_id, seat_number)');
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
