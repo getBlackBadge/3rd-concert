@@ -8,6 +8,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MiddleWareModule } from './common/middleware/middleware.module';
 import { ExceptionsFilter } from './common/filters/exception.filter';
 import { LoggingInterceptor } from './common/interceptors/http.interceptor';
+import { EventModule } from './infrastructure/event/event.module';
 
 @Global()
 @Module({
@@ -16,6 +17,7 @@ import { LoggingInterceptor } from './common/interceptors/http.interceptor';
     ScheduleModule.forRoot(),
     MiddleWareModule,
     PresentationModule,
+    EventModule
   ],
   controllers: [],
   providers: [
