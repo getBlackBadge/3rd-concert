@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BalanceService } from '../../domain/services/balance.service';
 import { ReservationService } from '../../domain/services/reservation.service';
+import { EventEmitterService } from '../../domain/services/event-emitter.service';
 import { SeatService } from '../../domain/services/seat.service';
 import { PaymentReqDto } from '../../presentation/dto/payment.dto'
 import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
@@ -13,7 +14,9 @@ export class PaymentFacade {
     private readonly balanceService: BalanceService,
     private readonly reservationService: ReservationService,
     private readonly seatService: SeatService,
-    private readonly redisLockManager: RedisLockManager
+    private readonly redisLockManager: RedisLockManager,
+    private readonly eventEmitterService: EventEmitterService,
+    
 
   ) {}
 
@@ -42,6 +45,10 @@ export class PaymentFacade {
         "completed_at": new Date(),
       }
     )
+
+    //MQ로 현금영수증 발행 및 
+    this.eventEmitterService.issueCashReceipt()
+    
 
     // 6. 결제 완료 정보 반환
     return {
