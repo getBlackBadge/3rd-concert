@@ -11,8 +11,8 @@
 
 1. **레포지토리 클론하기**  
    ```bash
-   git clone https://github.com/yourusername/yourproject.git
-   cd yourproject
+   git clone https://github.com/getBlackBadge/3rd-concert.git
+   cd 3rd-concert
    ```
 
 2. **Docker 컨테이너 시작하기**
