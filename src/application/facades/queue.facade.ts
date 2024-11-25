@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateTokenReqDto } from '../../presentation/dto/create-token.dto';
-import { QueueStatusResDto, QueueStatusRequestDto } from '../../presentation/dto/queue-status.dto';
+import { CreateTokenReqDto } from '../../presentation/dto/create-token.controller.dto';
+import { QueueStatusResDto, QueueStatusReqDto } from '../../presentation/dto/queue-status.controller.dto';
 import { JwtService } from '../../common/jwt/jwt.service';
 import { ConcertService } from '../../domain/services/concert.service';
 import { UserService } from '../../domain/services/user.service';
@@ -57,7 +57,7 @@ export class QueueFacade {
     return token;
   }
 
-  async getQueueStatus(getQueueStatusDto: QueueStatusRequestDto): Promise<QueueStatusResDto> {
+  async getQueueStatus(getQueueStatusDto: QueueStatusReqDto): Promise<QueueStatusResDto> {
     const now = new Date();
     // JWT 토큰 검증 및 디코딩
     const decodedToken = await this.jwtService.verifyToken(getQueueStatusDto.token);

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ReservationReqDto, ReservationResDto, AvailableSeatsResDto } from '../../presentation/dto/reservation.dto';
+import { ReservationReqDto, ReservationResDto, AvailableSeatsResDto } from '../../presentation/dto/reservation.controller.dto';
 import { SeatService } from '../../domain/services/seat.service';
 import { ReservationService } from '../../domain/services/reservation.service';
 import { ConcertService } from '../../domain/services/concert.service';

@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Param, HttpStatus, HttpException, UsePipes, ValidationPipe } from '@nestjs/common';
 import { QueueFacade } from '../../application/facades/queue.facade';
-import { CreateTokenReqDto, CreateTokenResDto } from '../dto/create-token.dto';
-import { QueueStatusResDto, QueueStatusRequestDto } from '../dto/queue-status.dto';
+import { CreateTokenReqDto, CreateTokenResDto } from '../dto/create-token.controller.dto';
+import { QueueStatusResDto, QueueStatusReqDto } from '../dto/queue-status.controller.dto';
 
 @Controller('queue')
 export class QueueController {
@@ -30,7 +30,7 @@ export class QueueController {
    */
   @Post('status')
   @UsePipes(new ValidationPipe())
-  async getQueueStatus(@Body() queueStatusRequestDto: QueueStatusRequestDto): Promise<QueueStatusResDto>{
+  async getQueueStatus(@Body() queueStatusRequestDto: QueueStatusReqDto): Promise<QueueStatusResDto>{
     try {
       const { token, userId, concertId, position, status } = await this.queueFacade.getQueueStatus(queueStatusRequestDto);
       return new QueueStatusResDto(token, userId, concertId, position, status);

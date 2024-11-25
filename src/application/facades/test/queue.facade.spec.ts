@@ -15,7 +15,7 @@ import { RedisRepository } from '../../../infrastructure/redis/redis.repository'
 import { redisClient } from '../../../common/config/redis.config';
 import { createClient } from 'redis';
 import { RedisClientType } from 'redis';
-import { QueueStatusRequestDto, QueueStatusResDto } from '../../../presentation/dto/queue-status.dto';
+import { QueueStatusReqDto, QueueStatusResDto } from '../../../presentation/dto/queue-status.controller.dto';
 import { QueueStatusEnum } from '../../../common/enums/queue-status.enum'
 
 describe('QueueFacade', () => {
@@ -248,7 +248,7 @@ describe('QueueFacade', () => {
         activeAt: new Date(now.getTime() - 1000 * 60), // 1 minute ago
       };
       const token = jwtService.generateToken(decodedToken)
-      const getQueueStatusDto: QueueStatusRequestDto = { token: token };
+      const getQueueStatusDto: QueueStatusReqDto = { token: token };
 
       mockUserService.getUserById.mockResolvedValue({ id: userId });
       mockConcertService.getConcertByQueueId.mockResolvedValue({ id: concertId });
@@ -270,7 +270,7 @@ describe('QueueFacade', () => {
         activeAt: new Date(now.getTime() + 1000 * 60 * 10), // 10 minute later
       };
       const token = jwtService.generateToken(decodedToken)
-      const getQueueStatusDto: QueueStatusRequestDto = { token: token };
+      const getQueueStatusDto: QueueStatusReqDto = { token: token };
 
       mockUserService.getUserById.mockResolvedValue({ id: userId });
       mockConcertService.getConcertByQueueId.mockResolvedValue({ id: concertId });

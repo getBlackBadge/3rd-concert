@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
 import { PaymentFacade } from '../../application/facades/payment.facade';
-import { PaymentReqDto, PaymentResDto } from '../dto/payment.dto';
+import { PaymentReqDto, PaymentResDto } from '../dto/payment.controller.dto';
 
 @Controller('payment')
 export class PaymentController {

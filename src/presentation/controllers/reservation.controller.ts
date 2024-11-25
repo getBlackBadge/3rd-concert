@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Param, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ReservationFacade } from '../../application/facades/reservation.facade';
-import { ReservationReqDto, ReservationResDto } from '../dto/reservation.dto';
-import { AvailableSeatsResDto } from '../dto/reservation.dto';
+import { ReservationReqDto, ReservationResDto } from '../dto/reservation.controller.dto';
+import { AvailableSeatsResDto } from '../dto/reservation.controller.dto';
 
 @Controller('reservations')
 export class ReservationController {

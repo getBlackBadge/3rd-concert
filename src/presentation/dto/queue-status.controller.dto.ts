@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsUUID  } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class QueueStatusRequestDto {
+export class QueueStatusReqDto {
   @ApiProperty({ 
     description: '대기열 JWT',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6I...'

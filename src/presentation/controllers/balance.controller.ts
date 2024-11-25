@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, UsePipes, ValidationPipe, ParseUUIDPipe } from '@nestjs/common';
 // import { BalanceService } from '../../domain/services/deprecated/balance.service';
-import { BalanceReqDto, ChargeBalanceResDto, GetBalanceResDto } from '../dto/balance.dto';
+import { BalanceReqDto, ChargeBalanceResDto, GetBalanceResDto } from '../dto/balance.controller.dto';
 import { BalanceFacade } from '../../application/facades/balance.facade'
 
 @Controller('balance')

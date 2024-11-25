@@ -1,0 +1,259 @@
+
+services:
+  app:
+    image: "node:18-alpine"
+    container_name: nestjs-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: "node"
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=concert_service_db
+      - REDIS_HOST=redis
+      - REDIS_port=6379
+    volumes:
+      - .:/app
+    # ports:
+      # - "3001:3000"
+    tty: true
+    command: sh -c "npm run migrate:up && npx nodemon"
+    depends_on:
+      - redis 
+      - postgres
+    networks:
+      - app-network 
+  
+  redis:
+    image: redis:7.2.3-alpine3.18
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-server
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: concert_service_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-server
+    ports:
+      - "3000:80"  # Nginx의 80 포트를 호스트의 3000 포트에 매핑
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf  # Nginx 설정 파일
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+  # mock-server:  # 목서버 추가
+  #   image: node:18-alpine
+  #   container_name: mock-server
+  #   volumes:
+  #     - .:/app  # 현재 디렉토리를 컨테이너의 /app으로 마운트 TODO: 필요한 것만 마운트
+  #   working_dir: /app
+  #   command: sh run-mock-server.sh  # 스크립트를 실행하여 npm prism 시작
+  #   networks:
+  #     - app-network
+
+
+# 'setup' 서비스는 Elasticsearch 내에서 'logstash_internal' 및 'kibana_system'과 같은 사용자들을 초기화하는 일회성 스크립트를 실행합니다. 
+# 이때 비밀번호는 '.env' 파일에 정의된 값으로 설정됩니다. 또한 이러한 사용자들이 필요로 하는 역할들도 생성됩니다.
+# 이 작업은 초기 시작 시에만 한 번 수행하면 됩니다. 이후 실행하면 기존 사용자들의 비밀번호가 '.env' 파일에 정의된 값으로 재설정되며, 기본 권한을 가진 내장 역할들이 다시 설정됩니다.
+# 기본적으로 이 서비스는 'docker compose up' 명령으로 시작되는 서비스 목록에서 제외됩니다. 
+# 이는 이 서비스가 비기본 프로파일에 속하기 때문입니다. 이 서비스를 실행하려면, Compose 명령어에 '--profile=setup' CLI 플래그를 제공하거나, 'docker compose up setup'과 같이 서비스 이름으로 실행할 수 있습니다.
+  # setup:
+  #   profiles:
+  #     - setup
+  #   build:
+  #     context: setup/
+  #     args:
+  #       ELASTIC_VERSION: ${ELASTIC_VERSION}
+  #   init: true
+  #   volumes:
+  #     - ./setup/entrypoint.sh:/entrypoint.sh:ro,Z
+  #     - ./setup/lib.sh:/lib.sh:ro,Z
+  #     - ./setup/roles:/roles:ro,Z
+  #   environment:
+  #     ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+  #     LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+  #     KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+  #     METRICBEAT_INTERNAL_PASSWORD: ${METRICBEAT_INTERNAL_PASSWORD:-}
+  #     FILEBEAT_INTERNAL_PASSWORD: ${FILEBEAT_INTERNAL_PASSWORD:-}
+  #     HEARTBEAT_INTERNAL_PASSWORD: ${HEARTBEAT_INTERNAL_PASSWORD:-}
+  #     MONITORING_INTERNAL_PASSWORD: ${MONITORING_INTERNAL_PASSWORD:-}
+  #     BEATS_SYSTEM_PASSWORD: ${BEATS_SYSTEM_PASSWORD:-}
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     - elasticsearch
+
+  # elasticsearch:
+  #   build:
+  #     context: elasticsearch/
+  #     args:
+  #       ELASTIC_VERSION: ${ELASTIC_VERSION}
+  #   volumes:
+  #     - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,Z
+  #     - elasticsearch:/usr/share/elasticsearch/data:Z
+  #   ports:
+  #     - 9200:9200
+  #     - 9300:9300
+  #   environment:
+  #     node.name: elasticsearch
+  #     ES_JAVA_OPTS: -Xms512m -Xmx512m
+  #     # Bootstrap password.
+  #     # Used to initialize the keystore during the initial startup of
+  #     # Elasticsearch. Ignored on subsequent runs.
+  #     ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+  #     # Use single node discovery in order to disable production mode and avoid bootstrap checks.
+  #     # see: https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+  #     discovery.type: single-node
+  #   networks:
+  #     - app-network
+  #   restart: unless-stopped
+
+  # logstash:
+  #   build:
+  #     context: logstash/
+  #     args:
+  #       ELASTIC_VERSION: ${ELASTIC_VERSION}
+  #   volumes:
+  #     - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro,Z
+  #     - ./logstash/pipeline:/usr/share/logstash/pipeline:ro,Z
+  #   ports:
+  #     - 5044:5044
+  #     - 50000:50000/tcp
+  #     - 50000:50000/udp
+  #     - 9600:9600
+  #   environment:
+  #     LS_JAVA_OPTS: -Xms256m -Xmx256m
+  #     LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     - elasticsearch
+  #   restart: unless-stopped
+
+  # kibana:
+  #   build:
+  #     context: kibana/
+  #     args:
+  #       ELASTIC_VERSION: ${ELASTIC_VERSION}
+  #   volumes:
+  #     - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
+  #   ports:
+  #     - 5601:5601
+  #   environment:
+  #     KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     - elasticsearch
+  #   restart: unless-stopped
+
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:latest
+    ports:
+      - "9900:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - app-network
+
+  kafka:
+    container_name: kafka
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CREATE_TOPICS: "my-topic"
+    volumes:
+      # - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka/kafka-init.sh:/usr/bin/kafka-init.sh
+    command: ["bash", "-c", "start-kafka.sh & /usr/bin/kafka-init.sh"]
+    networks:
+      - app-network
+
+  # kafka-ui:
+  #   container_name: kafka-ui
+  #   image: provectuslabs/kafka-ui:latest
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - 9080:8080
+  #   environment:
+  #     DYNAMIC_CONFIG_ENABLED: 'true'
+  #   volumes:
+  #     - ./kui/config.yml:/etc/kafkaui/dynamic_config.yaml
+  #     # - /tmp/config.yml:/config.yml
+  #   networks:
+  #     - app-network
+
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:latest
+  #   container_name: zookeeper
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   ports:
+  #     - "2181:2181"
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:latest
+  #   container_name: kafka
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "9092:9092"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_CREATE_TOPICS: "my-topic"
+
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  elasticsearch:
+  kafka_1_data:
+    driver: local
+  kafka_2_data:
+    driver: local
+  kafka_3_data:
+    driver: local
+

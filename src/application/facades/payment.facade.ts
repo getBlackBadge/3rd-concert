@@ -3,7 +3,7 @@ import { BalanceService } from '../../domain/services/balance.service';
 import { ReservationService } from '../../domain/services/reservation.service';
 import { EventEmitterService } from '../../domain/services/event-emitter.service';
 import { SeatService } from '../../domain/services/seat.service';
-import { PaymentReqDto } from '../../presentation/dto/payment.dto'
+import { PaymentReqDto } from '../../presentation/dto/payment.controller.dto'
 import { RedisLockManager } from '../../common/managers/locks/redis-wait-lock.manager';
 import { ReservationStatusEnum } from '../../common/enums/reservation-status.enum';
 import { PaymentStatusEnum } from '../../common/enums/payment-status.enum';
