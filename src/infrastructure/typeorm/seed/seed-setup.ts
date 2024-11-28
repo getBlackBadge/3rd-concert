@@ -43,6 +43,12 @@ export class Seed1729080559632 implements MigrationInterface {
             );
         `);
 
+        // Insert a seed user
+        await queryRunner.query(`
+            INSERT INTO "Users" ("id", "username", "isAdmin", "balance", "created_at", "updated_at")
+            VALUES (uuid_generate_v4(), 'testuser', false, 1000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+        `);
+
         await queryRunner.query(`
             CREATE TABLE "Reservations" (
                 "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
